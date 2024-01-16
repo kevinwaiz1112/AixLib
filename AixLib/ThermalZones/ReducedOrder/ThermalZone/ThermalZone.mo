@@ -59,7 +59,7 @@ model ThermalZone "Thermal zone containing moisture balance"
 
   replaceable AixLib.BoundaryConditions.InternalGains.Humans.HumanSensibleHeatTemperatureDependent humanSenHeaDependent(
     final ratioConv=zoneParam.ratioConvectiveHeatPeople,
-    final roomArea=zoneParam.AZone_gains,
+    final roomArea=zoneParam.A_gains_people,
     final specificPersons=zoneParam.specificPeople,
     final activityDegree=zoneParam.activityDegree,
     final specificHeatPerPerson=zoneParam.fixedHeatFlowRatePersons) if ATot > 0 and internalGainsMode == 1 annotation (Placement(transformation(extent={{56,-34},
@@ -74,7 +74,7 @@ model ThermalZone "Thermal zone containing moisture balance"
 
   replaceable AixLib.BoundaryConditions.InternalGains.Humans.HumanTotalHeatTemperatureDependent humanTotHeaDependent(
     final ratioConv=zoneParam.ratioConvectiveHeatPeople,
-    final roomArea=1,
+    final roomArea=zoneParam.A_gains_people,
     final specificPersons=zoneParam.specificPeople,
     final activityDegree=zoneParam.activityDegree,
     final specificHeatPerPerson=zoneParam.fixedHeatFlowRatePersons) if ATot > 0 and internalGainsMode == 3 annotation (Placement(transformation(extent={{56,-34},
@@ -83,14 +83,14 @@ model ThermalZone "Thermal zone containing moisture balance"
   replaceable AixLib.BoundaryConditions.InternalGains.Machines.MachinesAreaSpecific machinesSenHea(
     final ratioConv=zoneParam.ratioConvectiveHeatMachines,
     final intGainsMachinesRoomAreaSpecific=zoneParam.internalGainsMachinesSpecific,
-
-    final roomArea=zoneParam.AZone_gains)
+    final roomArea=zoneParam.A_gains_machines)
                                     if ATot > 0 "Internal gains from machines" annotation (Placement(transformation(extent={{56,-56},
             {76,-37}})));
+
   replaceable AixLib.BoundaryConditions.InternalGains.Lights.LightsAreaSpecific lights(
     final ratioConv=zoneParam.ratioConvectiveHeatLighting,
     final lightingPowerRoomAreaSpecific=zoneParam.lightingPowerSpecific,
-    final roomArea=zoneParam.AZone_gains)
+    final roomArea=zoneParam.A_gains_light)
                                     if ATot > 0 "Internal gains from light" annotation (Placement(transformation(extent={{56,-78},
             {76,-59}})));
 
@@ -329,6 +329,11 @@ model ThermalZone "Thermal zone containing moisture balance"
       Placement(transformation(extent={{100,-50},{120,-30}}),
         iconTransformation(extent={{100,-50},{120,-30}})));
   // protected: ThermalZone
+  SQS_LPG.LPG_intGains lPG_intGains(
+    use_LPG_internal_gains_people=zoneParam.use_lpg_people,
+    use_LPG_internal_gains_machines=zoneParam.use_lpg_machines,
+    use_LPG_internal_gains_light=zoneParam.use_lpg_light)
+    annotation (Placement(transformation(extent={{22,-36},{36,-12}})));
 protected
     Modelica.Blocks.Sources.Constant hConRoof(final k=(zoneParam.hConRoofOut + zoneParam.hRadRoof)*zoneParam.ARoof)
     "Outdoor coefficient of heat transfer for roof" annotation (Placement(transformation(extent={{-14,68},
@@ -436,36 +441,22 @@ protected
     annotation (Placement(transformation(extent={{4,-4},{-4,4}},
     rotation=180,origin={39,22})));
 equation
-  connect(intGains[2], machinesSenHea.uRel) annotation (Line(points={{80,-100},{
-          80,-94},{78,-94},{78,-88},{48,-88},{48,-46.5},{56,-46.5}}, color={0,0,
-          127}));
-  connect(intGains[3], lights.uRel) annotation (Line(points={{80,-93.3333},{80,
-          -86},{50,-86},{50,-68.5},{56,-68.5}},
-                                           color={0,0,127}));
   connect(lights.convHeat, ROM.intGainsConv) annotation (Line(points={{75,-62.8},
           {92,-62.8},{92,78},{86,78}}, color={191,0,0}));
   connect(machinesSenHea.convHeat, ROM.intGainsConv) annotation (Line(points={{75,
           -40.8},{92,-40.8},{92,78},{86,78}}, color={191,0,0}));
-  connect(intGains[1], humanSenHeaDependent.uRel) annotation (Line(points={{80,
-          -106.667},{80,-92},{46,-92},{46,-24},{56,-24}},
-                                                color={0,0,127}));
   connect(humanSenHeaDependent.convHeat, ROM.intGainsConv) annotation (Line(
         points={{75,-18},{92,-18},{92,78},{86,78}}, color={191,0,0}));
   connect(ROM.intGainsConv, humanSenHeaDependent.TRoom) annotation (Line(points=
          {{86,78},{92,78},{92,-10},{57,-10},{57,-15}}, color={191,0,0}));
   connect(humanSenHeaDependent.radHeat, ROM.intGainsRad) annotation (Line(
         points={{75,-30},{94,-30},{94,82},{86,82}}, color={95,95,95}));
-  connect(intGains[1], humanSenHeaIndependent.uRel) annotation (Line(points={{80,
-          -106.667},{80,-92},{46,-92},{46,-24},{56,-24}}, color={0,0,127}));
   connect(humanSenHeaIndependent.convHeat, ROM.intGainsConv) annotation (Line(
         points={{75,-18},{92,-18},{92,78},{86,78}}, color={191,0,0}));
   connect(ROM.intGainsConv, humanSenHeaIndependent.TRoom) annotation (Line(
         points={{86,78},{92,78},{92,-10},{57,-10},{57,-15}}, color={191,0,0}));
   connect(humanSenHeaIndependent.radHeat, ROM.intGainsRad) annotation (Line(
         points={{75,-30},{94,-30},{94,82},{86,82}}, color={95,95,95}));
-  connect(intGains[1], humanTotHeaDependent.uRel) annotation (Line(points={{80,
-          -106.667},{80,-92},{46,-92},{46,-24},{56,-24}},
-                                                color={0,0,127}));
   connect(humanTotHeaDependent.convHeat, ROM.intGainsConv) annotation (Line(
         points={{75,-18},{92,-18},{92,78},{86,78}}, color={191,0,0}));
   connect(ROM.intGainsConv, humanTotHeaDependent.TRoom) annotation (Line(points=
@@ -833,6 +824,28 @@ end if;
   connect(TSoil.TGroundOut, eqAirTempRoof.TGro_in) annotation (Line(points={{43.4,
           19.6},{48,19.6},{48,28},{36,28},{36,62},{-34,62},{-34,64.8}}, color={0,
           0,127}));
+  connect(intGains[3], lPG_intGains.u_light) annotation (Line(points={{80,
+          -93.3333},{28,-93.3333},{28,-32},{21.79,-32},{21.79,-18.12}},
+                                                              color={0,0,127}));
+  connect(lPG_intGains.int_gains_light, lights.uRel) annotation (Line(points={{36.63,
+          -16.44},{36.63,-68.5},{56,-68.5}}, color={0,0,127}));
+  connect(lPG_intGains.int_gains_machines, machinesSenHea.uRel) annotation (
+      Line(points={{36.63,-16.44},{36.63,-46.5},{56,-46.5}}, color={0,0,127}));
+  connect(intGains[1], lPG_intGains.u_people) annotation (Line(points={{80,
+          -106.667},{54,-106.667},{54,-80},{16,-80},{16,-16.08},{21.58,-16.08}},
+                                                                       color={0,
+          0,127}));
+  connect(intGains[2], lPG_intGains.u_machines) annotation (Line(points={{80,-100},
+          {54,-100},{54,-80},{16,-80},{16,-18.12},{21.79,-18.12}}, color={0,0,127}));
+  connect(lPG_intGains.int_gains_people, humanTotHeaDependent.uRel) annotation (
+     Line(points={{36.63,-14.52},{44,-14.52},{44,-20},{56,-20},{56,-24}}, color
+        ={0,0,127}));
+  connect(lPG_intGains.int_gains_people, humanSenHeaDependent.uRel) annotation (
+     Line(points={{36.63,-14.52},{44,-14.52},{44,-20},{56,-20},{56,-24}}, color
+        ={0,0,127}));
+  connect(lPG_intGains.int_gains_people, humanSenHeaIndependent.uRel) annotation (
+     Line(points={{36.63,-14.52},{44,-14.52},{44,-20},{56,-20},{56,-24}}, color
+        ={0,0,127}));
   annotation (Documentation(revisions="<html><ul>
   <li>April 20, 2023, by Philip Groesdonk:<br/>
   Added five element RC model (for heat exchange with neighboured zones) and

@@ -6,7 +6,6 @@ record ZoneBaseRecord "Base record definition for zone records"
   parameter Boolean withAirCap = true "Consider capacity of indoor air";
   parameter Modelica.Units.SI.Volume VAir "Air volume of the zone";
   parameter Modelica.Units.SI.Area AZone "Net floor area of zone";
-  parameter Modelica.Units.SI.Area AZone_gains "Area of zone set to 1 for internal gains";
   parameter Modelica.Units.SI.CoefficientOfHeatTransfer hRad
     "Coefficient of heat transfer for linearized radiation exchange between walls";
   parameter Modelica.Units.SI.Angle lat "Latitude of zone location";
@@ -123,6 +122,12 @@ record ZoneBaseRecord "Base record definition for zone records"
     "Weight factors of the windows";
   parameter Real wfGro
     "Weight factor of the ground";
+  parameter Boolean use_lpg_people "use the timetable generated from lpg";
+  parameter Boolean use_lpg_machines "use the timetable generated from lpg";
+  parameter Boolean use_lpg_light "use the timetable generated from lpg";
+  parameter Modelica.Units.SI.Area A_gains_people "Area of people set to 1 for internal gains with absolute values";
+  parameter Modelica.Units.SI.Area A_gains_machines "Area of machines set to 1 for internal gains with absolute values";
+  parameter Modelica.Units.SI.Area A_gains_light "Area of machines set to 1 for internal gains with absolute values";
   parameter Real specificPeople "people per squaremeter";
   parameter Real activityDegree "acitivity degree of people in met";
   parameter Modelica.Units.SI.HeatFlowRate fixedHeatFlowRatePersons "Area specific heatflowrate by persons in case of temperature independent
