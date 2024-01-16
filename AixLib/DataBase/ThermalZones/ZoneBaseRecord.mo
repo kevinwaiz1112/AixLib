@@ -6,6 +6,7 @@ record ZoneBaseRecord "Base record definition for zone records"
   parameter Boolean withAirCap = true "Consider capacity of indoor air";
   parameter Modelica.Units.SI.Volume VAir "Air volume of the zone";
   parameter Modelica.Units.SI.Area AZone "Net floor area of zone";
+  parameter Modelica.Units.SI.Area AZone_gains "Area of zone set to 1 for internal gains";
   parameter Modelica.Units.SI.CoefficientOfHeatTransfer hRad
     "Coefficient of heat transfer for linearized radiation exchange between walls";
   parameter Modelica.Units.SI.Angle lat "Latitude of zone location";

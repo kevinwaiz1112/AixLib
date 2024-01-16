@@ -59,7 +59,7 @@ model ThermalZone "Thermal zone containing moisture balance"
 
   replaceable AixLib.BoundaryConditions.InternalGains.Humans.HumanSensibleHeatTemperatureDependent humanSenHeaDependent(
     final ratioConv=zoneParam.ratioConvectiveHeatPeople,
-    final roomArea=zoneParam.AZone,
+    final roomArea=zoneParam.AZone_gains,
     final specificPersons=zoneParam.specificPeople,
     final activityDegree=zoneParam.activityDegree,
     final specificHeatPerPerson=zoneParam.fixedHeatFlowRatePersons) if ATot > 0 and internalGainsMode == 1 annotation (Placement(transformation(extent={{56,-34},
@@ -74,7 +74,7 @@ model ThermalZone "Thermal zone containing moisture balance"
 
   replaceable AixLib.BoundaryConditions.InternalGains.Humans.HumanTotalHeatTemperatureDependent humanTotHeaDependent(
     final ratioConv=zoneParam.ratioConvectiveHeatPeople,
-    final roomArea=zoneParam.AZone,
+    final roomArea=1,
     final specificPersons=zoneParam.specificPeople,
     final activityDegree=zoneParam.activityDegree,
     final specificHeatPerPerson=zoneParam.fixedHeatFlowRatePersons) if ATot > 0 and internalGainsMode == 3 annotation (Placement(transformation(extent={{56,-34},
@@ -83,18 +83,21 @@ model ThermalZone "Thermal zone containing moisture balance"
   replaceable AixLib.BoundaryConditions.InternalGains.Machines.MachinesAreaSpecific machinesSenHea(
     final ratioConv=zoneParam.ratioConvectiveHeatMachines,
     final intGainsMachinesRoomAreaSpecific=zoneParam.internalGainsMachinesSpecific,
-    final roomArea=zoneParam.AZone) if ATot > 0 "Internal gains from machines" annotation (Placement(transformation(extent={{56,-56},
+
+    final roomArea=zoneParam.AZone_gains)
+                                    if ATot > 0 "Internal gains from machines" annotation (Placement(transformation(extent={{56,-56},
             {76,-37}})));
   replaceable AixLib.BoundaryConditions.InternalGains.Lights.LightsAreaSpecific lights(
     final ratioConv=zoneParam.ratioConvectiveHeatLighting,
     final lightingPowerRoomAreaSpecific=zoneParam.lightingPowerSpecific,
-    final roomArea=zoneParam.AZone) if ATot > 0 "Internal gains from light" annotation (Placement(transformation(extent={{56,-78},
+    final roomArea=zoneParam.AZone_gains)
+                                    if ATot > 0 "Internal gains from light" annotation (Placement(transformation(extent={{56,-78},
             {76,-59}})));
 
   corG corGMod(
     final n=zoneParam.nOrientations,
-    final UWin=zoneParam.UWin) if
-    sum(zoneParam.ATransparent) > 0 "Correction factor for solar transmission"
+    final UWin=zoneParam.UWin)
+ if sum(zoneParam.ATransparent) > 0 "Correction factor for solar transmission"
     annotation (Placement(transformation(extent={{-16,43},{-4,55}})));
   replaceable EquivalentAirTemperature.VDI6007WithWindow eqAirTempWall(
     withLongwave=true,
@@ -118,8 +121,8 @@ model ThermalZone "Thermal zone containing moisture balance"
     final hConWallOut=zoneParam.hConRoofOut,
     final hRad=zoneParam.hRadRoof,
     final wfWin=fill(0, zoneParam.nOrientationsRoof),
-    TGroundFromInput=true) if
-                          zoneParam.ARoof > 0
+    TGroundFromInput=true)
+                       if zoneParam.ARoof > 0
     "Computes equivalent air temperature for roof"
     annotation (Placement(transformation(extent={{-40,66},{-28,78}})));
   Modelica.Blocks.Sources.Constant constSunblindRoof[zoneParam.nOrientationsRoof](
@@ -210,8 +213,8 @@ model ThermalZone "Thermal zone containing moisture balance"
   replaceable SolarGain.SimpleExternalShading simpleExternalShading(
     final nOrientations=zoneParam.nOrientations,
     final maxIrrs=zoneParam.maxIrr,
-    final gValues=zoneParam.shadingFactor) if
-    sum(zoneParam.ATransparent) > 0
+    final gValues=zoneParam.shadingFactor)
+ if sum(zoneParam.ATransparent) > 0
     annotation (Placement(transformation(extent={{4,44},{10,50}})));
 
   // Air Exchange
@@ -230,8 +233,8 @@ model ThermalZone "Thermal zone containing moisture balance"
      > 0) and use_NaturalAirExchange and use_MechanicalAirExchange
     "Mixes temperature of infiltration flow and mechanical ventilation flow"
     annotation (Placement(transformation(extent={{-56,-4},{-48,4}})));
-  HighOrder.Components.DryAir.VarAirExchange airExc(final V=zoneParam.VAir) if
-       (ATot > 0 or zoneParam.VAir > 0) and  (use_NaturalAirExchange or use_MechanicalAirExchange) and not use_moisture_balance
+  HighOrder.Components.DryAir.VarAirExchange airExc(final V=zoneParam.VAir)
+    if (ATot > 0 or zoneParam.VAir > 0) and  (use_NaturalAirExchange or use_MechanicalAirExchange) and not use_moisture_balance
     "Heat flow due to ventilation"
     annotation (Placement(transformation(extent={{-22,-14},{-6,2}})));
 
@@ -265,16 +268,16 @@ model ThermalZone "Thermal zone containing moisture balance"
     annotation (Placement(transformation(extent={{-40,-68},{-28,-56}})));
   BoundaryConditions.InternalGains.Moisture.MoistureGains moistureGains(
     final roomArea=zoneParam.AZone,
-    final specificMoistureProduction=zoneParam.internalGainsMoistureNoPeople) if
-       ATot > 0 and use_moisture_balance
+    final specificMoistureProduction=zoneParam.internalGainsMoistureNoPeople)
+    if ATot > 0 and use_moisture_balance
     "Internal moisture gains by plants, etc."
     annotation (Dialog(enable=use_moisture_balance, tab="Moisture"),
       Placement(transformation(extent={{-70,-78},{-60,-68}})));
-  Modelica.Blocks.Sources.Constant noMoisturePerson(k=0) if
-       internalGainsMode <> 3 and use_moisture_balance
+  Modelica.Blocks.Sources.Constant noMoisturePerson(k=0)
+    if internalGainsMode <> 3 and use_moisture_balance
     annotation (Placement(transformation(extent={{-58,-66},{-50,-58}})));
-  Modelica.Blocks.Interfaces.RealOutput X_w if
-       (ATot > 0 or zoneParam.VAir > 0) and use_moisture_balance
+  Modelica.Blocks.Interfaces.RealOutput X_w
+    if (ATot > 0 or zoneParam.VAir > 0) and use_moisture_balance
     "Humidity output" annotation (Placement(transformation(extent={{100,-80},{
             120,-60}}),
                     iconTransformation(extent={{100,-80},{120,-60}})));
@@ -330,19 +333,19 @@ protected
     Modelica.Blocks.Sources.Constant hConRoof(final k=(zoneParam.hConRoofOut + zoneParam.hRadRoof)*zoneParam.ARoof)
     "Outdoor coefficient of heat transfer for roof" annotation (Placement(transformation(extent={{-14,68},
             {-6,76}})));
-  Modelica.Thermal.HeatTransfer.Components.Convection theConRoof if
-    zoneParam.ARoof > 0
+  Modelica.Thermal.HeatTransfer.Components.Convection theConRoof
+ if zoneParam.ARoof > 0
     "Outdoor convective heat transfer of roof"
     annotation (Placement(transformation(extent={{5,5},{-5,-5}},rotation=0,
     origin={5,83})));
-  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemRoof if
-    zoneParam.ARoof > 0
+  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemRoof
+ if zoneParam.ARoof > 0
     "Prescribed temperature for roof outdoor surface temperature"
     annotation (Placement(transformation(extent={{-4.5,-4},{4.5,4}},
                                                                 rotation=0,
     origin={-9.5,84})));
-  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemFloor if
-    zoneParam.AFloor > 0
+  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemFloor
+ if zoneParam.AFloor > 0
     "Prescribed temperature for floor plate outdoor surface temperature"
     annotation (Placement(transformation(extent={{-6,-6},{6,6}},
     rotation=90,origin={48,36})));
@@ -350,15 +353,15 @@ protected
     "Outdoor coefficient of heat transfer for walls" annotation (Placement(transformation(extent={{4,-4},{
             -4,4}},                                                                                               rotation=180,
         origin={-2,16})));
-  Modelica.Thermal.HeatTransfer.Components.Convection theConWall if
-    sum(zoneParam.AExt) > 0
+  Modelica.Thermal.HeatTransfer.Components.Convection theConWall
+ if sum(zoneParam.AExt) > 0
     "Outdoor convective heat transfer of walls"
     annotation (Placement(transformation(extent={{26,24},{16,14}})));
   Modelica.Blocks.Sources.Constant hConWin(final k=(zoneParam.hConWinOut + zoneParam.hRadWall)*sum(zoneParam.AWin))
     "Outdoor coefficient of heat transfer for windows" annotation (Placement(transformation(extent={{4,-4},{-4,4}}, rotation=90,
         origin={22,48})));
-  Modelica.Thermal.HeatTransfer.Components.Convection theConWin if
-    sum(zoneParam.AWin) > 0
+  Modelica.Thermal.HeatTransfer.Components.Convection theConWin
+ if sum(zoneParam.AWin) > 0
     "Outdoor convective heat transfer of windows"
     annotation (Placement(transformation(extent={{26,30},{16,40}})));
   Modelica.Blocks.Math.Add solRadRoof[zoneParam.nOrientationsRoof]
@@ -367,12 +370,12 @@ protected
   Modelica.Blocks.Math.Add solRadWall[zoneParam.nOrientations]
     "Sums up solar radiation of both directions"
     annotation (Placement(transformation(extent={{-54,22},{-44,32}})));
-  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemWall if
-    sum(zoneParam.AExt) > 0
+  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemWall
+ if sum(zoneParam.AExt) > 0
     "Prescribed temperature for exterior walls outdoor surface temperature"
     annotation (Placement(transformation(extent={{-18,16},{-10,24}})));
-  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemWin if
-    sum(zoneParam.AWin) > 0
+  Modelica.Thermal.HeatTransfer.Sources.PrescribedTemperature preTemWin
+ if sum(zoneParam.AWin) > 0
     "Prescribed temperature for windows outdoor surface temperature"
     annotation (Placement(transformation(extent={{4,31},{12,38}})));
 
@@ -395,8 +398,8 @@ protected
         origin={-35,-1})));
 
   // protected: MoistAir
-  Modelica.Blocks.Sources.RealExpression humVolAirROM(y=ROM.volMoiAir.X_w) if
-       (ATot > 0 or zoneParam.VAir > 0) and use_moisture_balance
+  Modelica.Blocks.Sources.RealExpression humVolAirROM(y=ROM.volMoiAir.X_w)
+    if (ATot > 0 or zoneParam.VAir > 0) and use_moisture_balance
     annotation (Placement(transformation(extent={{-70,-58},{-60,-42}})));
 
   // protected: Outputs
@@ -436,7 +439,7 @@ equation
   connect(intGains[2], machinesSenHea.uRel) annotation (Line(points={{80,-100},{
           80,-94},{78,-94},{78,-88},{48,-88},{48,-46.5},{56,-46.5}}, color={0,0,
           127}));
-  connect(intGains[3], lights.uRel) annotation (Line(points={{80,-86.6667},{80,
+  connect(intGains[3], lights.uRel) annotation (Line(points={{80,-93.3333},{80,
           -86},{50,-86},{50,-68.5},{56,-68.5}},
                                            color={0,0,127}));
   connect(lights.convHeat, ROM.intGainsConv) annotation (Line(points={{75,-62.8},
@@ -444,7 +447,7 @@ equation
   connect(machinesSenHea.convHeat, ROM.intGainsConv) annotation (Line(points={{75,
           -40.8},{92,-40.8},{92,78},{86,78}}, color={191,0,0}));
   connect(intGains[1], humanSenHeaDependent.uRel) annotation (Line(points={{80,
-          -113.333},{80,-92},{46,-92},{46,-24},{56,-24}},
+          -106.667},{80,-92},{46,-92},{46,-24},{56,-24}},
                                                 color={0,0,127}));
   connect(humanSenHeaDependent.convHeat, ROM.intGainsConv) annotation (Line(
         points={{75,-18},{92,-18},{92,78},{86,78}}, color={191,0,0}));
@@ -453,7 +456,7 @@ equation
   connect(humanSenHeaDependent.radHeat, ROM.intGainsRad) annotation (Line(
         points={{75,-30},{94,-30},{94,82},{86,82}}, color={95,95,95}));
   connect(intGains[1], humanSenHeaIndependent.uRel) annotation (Line(points={{80,
-          -113.333},{80,-92},{46,-92},{46,-24},{56,-24}}, color={0,0,127}));
+          -106.667},{80,-92},{46,-92},{46,-24},{56,-24}}, color={0,0,127}));
   connect(humanSenHeaIndependent.convHeat, ROM.intGainsConv) annotation (Line(
         points={{75,-18},{92,-18},{92,78},{86,78}}, color={191,0,0}));
   connect(ROM.intGainsConv, humanSenHeaIndependent.TRoom) annotation (Line(
@@ -461,7 +464,7 @@ equation
   connect(humanSenHeaIndependent.radHeat, ROM.intGainsRad) annotation (Line(
         points={{75,-30},{94,-30},{94,82},{86,82}}, color={95,95,95}));
   connect(intGains[1], humanTotHeaDependent.uRel) annotation (Line(points={{80,
-          -113.333},{80,-92},{46,-92},{46,-24},{56,-24}},
+          -106.667},{80,-92},{46,-92},{46,-24},{56,-24}},
                                                 color={0,0,127}));
   connect(humanTotHeaDependent.convHeat, ROM.intGainsConv) annotation (Line(
         points={{75,-18},{92,-18},{92,78},{86,78}}, color={191,0,0}));
@@ -628,7 +631,7 @@ equation
       color={0,0,127},
       smooth=Smooth.None));
   connect(intGains[1], ventCont.relOccupation) annotation (Line(points={{80,
-          -113.333},{80,-92},{46,-92},{46,-36},{-66,-36},{-66,-30.8}},   color=
+          -106.667},{80,-92},{46,-92},{46,-36},{-66,-36},{-66,-30.8}},   color=
           {0,0,127}));
   connect(ventRate, addInfVen.u2) annotation (Line(points={{-108,-64},{-76,-64},
           {-76,-34},{-44,-34},{-44,-30},{-41,-30}},
@@ -666,16 +669,18 @@ equation
       extent={{-6,3},{-6,3}}));
   if internalGainsMode == 3 then
     connect(humanTotHeaDependent.QLat_flow, SumQLat1_flow.u[1]) annotation (
-        Line(points={{75.6,-16},{92,-16},{92,-4},{8,-4},{8,-54},{-42,-54},{-42,-59.9},
-            {-40,-59.9}}, color={0,0,127}));
+        Line(points={{75.6,-16},{92,-16},{92,-4},{8,-4},{8,-54},{-42,-54},{-42,
+            -63.05},{-40,-63.05}},
+                          color={0,0,127}));
     connect(humanTotHeaDependent.QLat_flow, SumQLat2_flow.u[1]) annotation (
-        Line(points={{75.6,-16},{92,-16},{92,-4},{8,-4},{8,-54},{-42,-54},{-42,-59.2},
-            {-40,-59.2}}, color={0,0,127}));
+        Line(points={{75.6,-16},{92,-16},{92,-4},{8,-4},{8,-54},{-42,-54},{-42,
+            -63.4},{-40,-63.4}},
+                          color={0,0,127}));
   else
     connect(noMoisturePerson.y, SumQLat1_flow.u[1]) annotation (Line(points={{-49.6,
-            -62},{-40,-62},{-40,-59.9}}, color={0,0,127}));
+            -62},{-40,-62},{-40,-63.05}},color={0,0,127}));
     connect(noMoisturePerson.y, SumQLat2_flow.u[1]) annotation (Line(points={{-49.6,
-            -62},{-40,-62},{-40,-59.2}}, color={0,0,127}));
+            -62},{-40,-62},{-40,-63.4}}, color={0,0,127}));
   end if;
 
   if sum(zoneParam.ANZ) > 0 then
@@ -746,7 +751,7 @@ else
 end if;
 
   connect(moistureGains.QLat_flow, SumQLat1_flow.u[2]) annotation (Line(points={{-59.5,
-          -73},{-52,-73},{-52,-74},{-46,-74},{-46,-64.1},{-40,-64.1}},    color=
+          -73},{-52,-73},{-52,-74},{-46,-74},{-46,-60.95},{-40,-60.95}},  color=
          {0,0,127}));
   connect(moistureGains.QLat_flow, SumQLat2_flow.u[2]) annotation (Line(points={
           {-59.5,-73},{-52,-73},{-52,-74},{-46,-74},{-46,-62},{-40,-62}}, color=
@@ -759,7 +764,7 @@ end if;
           -6},{96,-6},{96,-70},{110,-70}},
                                        color={0,0,127}));
   connect(cO2Balance.uRel, intGains[1]) annotation (Line(points={{20,-61.4},{20,
-          -50},{46,-50},{46,-113.333},{80,-113.333}},            color={0,0,127}));
+          -50},{46,-50},{46,-106.667},{80,-106.667}},            color={0,0,127}));
   connect(cO2Balance.TAir, TAir) annotation (Line(points={{27,-60},{26,-60},{26,
           0},{96,0},{96,80},{110,80}},
                          color={0,0,127}));
@@ -775,7 +780,7 @@ end if;
   connect(airExcMoi.port_b, ROM.intGainsConv) annotation (Line(points={{-6,-6},
           {58,-6},{58,78},{86,78}}, color={191,0,0}));
   connect(airExcMoi.QLat_flow, SumQLat2_flow.u[3]) annotation (Line(points={{-5.68,
-          -10.96},{-6,-10.96},{-6,-40},{-42,-40},{-42,-64.8},{-40,-64.8}},
+          -10.96},{-6,-10.96},{-6,-40},{-42,-40},{-42,-60.6},{-40,-60.6}},
         color={0,0,127}));
   connect(humVolAirROM.y, airExcMoi.HumOut) annotation (Line(points={{-59.5,-50},
           {-4,-50},{-4,0},{-6,0},{-6,-1.84},{-6.8,-1.84}},
