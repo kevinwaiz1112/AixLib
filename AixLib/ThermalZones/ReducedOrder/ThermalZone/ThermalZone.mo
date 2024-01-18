@@ -621,9 +621,6 @@ equation
       points={{-50.8,-26},{-46,-26},{-46,-24},{-41,-24}},
       color={0,0,127},
       smooth=Smooth.None));
-  connect(intGains[1], ventCont.relOccupation) annotation (Line(points={{80,
-          -106.667},{80,-92},{46,-92},{46,-36},{-66,-36},{-66,-30.8}},   color=
-          {0,0,127}));
   connect(ventRate, addInfVen.u2) annotation (Line(points={{-108,-64},{-76,-64},
           {-76,-34},{-44,-34},{-44,-30},{-41,-30}},
                                       color={0,0,127}));
@@ -725,8 +722,7 @@ elseif use_MechanicalAirExchange and not use_NaturalAirExchange then
               {-21.2,-10}},
       color={0,0,127},
       pattern=LinePattern.Dash));
-else
-     connect(addInfVen.y, cO2Balance.airExc) annotation (Line(points={{-29.5,
+else connect(addInfVen.y, cO2Balance.airExc) annotation (Line(points={{-29.5,
             -27},{-24,-27},{-24,-34},{12,-34},{12,-64.9},{20,-64.9}},
                                                             color={0,0,127}));
      connect(addInfVen.y, airExc.ventRate) annotation (Line(points={{-29.5,-27},
@@ -755,7 +751,7 @@ end if;
           -6},{96,-6},{96,-70},{110,-70}},
                                        color={0,0,127}));
   connect(cO2Balance.uRel, intGains[1]) annotation (Line(points={{20,-61.4},{20,
-          -50},{46,-50},{46,-106.667},{80,-106.667}},            color={0,0,127}));
+          -50},{46,-50},{46,-107.5},{80,-107.5}},                color={0,0,127}));
   connect(cO2Balance.TAir, TAir) annotation (Line(points={{27,-60},{26,-60},{26,
           0},{96,0},{96,80},{110,80}},
                          color={0,0,127}));
@@ -824,19 +820,19 @@ end if;
   connect(TSoil.TGroundOut, eqAirTempRoof.TGro_in) annotation (Line(points={{43.4,
           19.6},{48,19.6},{48,28},{36,28},{36,62},{-34,62},{-34,64.8}}, color={0,
           0,127}));
-  connect(intGains[3], lPG_intGains.u_light) annotation (Line(points={{80,
-          -93.3333},{28,-93.3333},{28,-32},{21.79,-32},{21.79,-18.12}},
-                                                              color={0,0,127}));
+  connect(intGains[3], lPG_intGains.u_light) annotation (Line(points={{80,-97.5},
+          {28,-97.5},{28,-32},{21.79,-32},{21.79,-18.12}},    color={0,0,127}));
   connect(lPG_intGains.int_gains_light, lights.uRel) annotation (Line(points={{36.63,
           -16.44},{36.63,-68.5},{56,-68.5}}, color={0,0,127}));
   connect(lPG_intGains.int_gains_machines, machinesSenHea.uRel) annotation (
       Line(points={{36.63,-16.44},{36.63,-46.5},{56,-46.5}}, color={0,0,127}));
   connect(intGains[1], lPG_intGains.u_people) annotation (Line(points={{80,
-          -106.667},{54,-106.667},{54,-80},{16,-80},{16,-16.08},{21.58,-16.08}},
+          -107.5},{54,-107.5},{54,-80},{16,-80},{16,-16.08},{21.58,-16.08}},
                                                                        color={0,
           0,127}));
-  connect(intGains[2], lPG_intGains.u_machines) annotation (Line(points={{80,-100},
-          {54,-100},{54,-80},{16,-80},{16,-18.12},{21.79,-18.12}}, color={0,0,127}));
+  connect(intGains[2], lPG_intGains.u_machines) annotation (Line(points={{80,
+          -102.5},{54,-102.5},{54,-80},{16,-80},{16,-18.12},{21.79,-18.12}},
+                                                                   color={0,0,127}));
   connect(lPG_intGains.int_gains_people, humanTotHeaDependent.uRel) annotation (
      Line(points={{36.63,-14.52},{44,-14.52},{44,-20},{56,-20},{56,-24}}, color
         ={0,0,127}));
@@ -846,6 +842,9 @@ end if;
   connect(lPG_intGains.int_gains_people, humanSenHeaIndependent.uRel) annotation (
      Line(points={{36.63,-14.52},{44,-14.52},{44,-20},{56,-20},{56,-24}}, color
         ={0,0,127}));
+  connect(intGains[4], ventCont.relOccupation) annotation (Line(points={{80,
+          -100},{54,-100},{54,-80},{16,-80},{16,-36},{-66,-36},{-66,-30.8}},
+        color={0,0,127}));
   annotation (Documentation(revisions="<html><ul>
   <li>April 20, 2023, by Philip Groesdonk:<br/>
   Added five element RC model (for heat exchange with neighboured zones) and

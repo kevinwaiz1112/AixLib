@@ -44,7 +44,7 @@ partial model PartialMultizone "Partial model for multizone models"
     "Model for correction of solar transmission"
     annotation(choicesAllMatching=true);
 
-  Modelica.Blocks.Interfaces.RealInput intGains[3*numZones]
+  Modelica.Blocks.Interfaces.RealInput intGains[4*numZones]
     "Input profiles for internal gains persons, machines, light"
     annotation (
     Placement(transformation(
@@ -73,13 +73,13 @@ partial model PartialMultizone "Partial model for multizone models"
     annotation (Placement(
     transformation(extent={{-117,53},{-83,85}}), iconTransformation(
     extent={{-90,30},{-70,50}})));
-  Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a intGainsConv[size(zone, 1)] if
-       ASurTot > 0 or VAir > 0
+  Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a intGainsConv[size(zone, 1)]
+    if ASurTot > 0 or VAir > 0
     "Convective internal gains"
     annotation (Placement(transformation(extent={{-110,-80},{-90,-60}}),
         iconTransformation(extent={{-90,-92},{-70,-72}})));
-  Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a intGainsRad[size(zone, 1)] if
-       ASurTot > 0 "Radiative internal gains"
+  Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a intGainsRad[size(zone, 1)]
+    if ASurTot > 0 "Radiative internal gains"
     annotation (Placement(transformation(extent={{-110,-30},{-90,-50}}),
         iconTransformation(extent={{-90,-60},{-70,-40}})));
   AixLib.ThermalZones.ReducedOrder.ThermalZone.ThermalZone zone[numZones](
@@ -234,12 +234,13 @@ equation
 
 
   for i in 1:numZones loop
-    connect(intGains[(i*3) - 2], zone[i].intGains[1]) annotation (Line(
-        points={{76,-100},{76,50.64},{75.8,50.64}},
+    connect(intGains[(i*4) - 3], zone[i].intGains[1]) annotation (Line(
+        points={{76,-100},{76,51.3575},{75.8,51.3575}},
         color={0,0,127},
         smooth=Smooth.None));
-    connect(intGains[(i*3) - 1], zone[i].intGains[2]);
-    connect(intGains[(i*3)], zone[i].intGains[3]);
+    connect(intGains[(i*4) - 2], zone[i].intGains[2]);
+    connect(intGains[(i*4) - 1], zone[i].intGains[3]);
+    connect(intGains[(i*4)], zone[i].intGains[4]);
     connect(zone[i].weaBus, weaBus) annotation (Line(
       points={{38,81.8},{-24,81.8},{-24,69},{-100,69}},
       color={255,204,51},

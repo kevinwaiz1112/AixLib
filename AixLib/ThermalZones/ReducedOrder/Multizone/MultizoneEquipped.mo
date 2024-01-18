@@ -1,7 +1,8 @@
 ﻿within AixLib.ThermalZones.ReducedOrder.Multizone;
 model MultizoneEquipped
   "Multizone model with ideal heater and cooler and AHU"
-  extends AixLib.ThermalZones.ReducedOrder.Multizone.BaseClasses.PartialMultizone;
+  extends
+    AixLib.ThermalZones.ReducedOrder.Multizone.BaseClasses.PartialMultizone;
 
   parameter Boolean heatAHU
     "Status of heating of AHU"
@@ -208,12 +209,12 @@ initial algorithm
 
 equation
   for i in 1:numZones loop
-    connect(intGains[(i*3) - 2], airFlowRate.relOccupation[i]) annotation (Line(
+    connect(intGains[(i*4)], airFlowRate.relOccupation[i]) annotation (Line(
         points={{76,-100},{74,-100},{74,-42},{-78,-42},{-78,26},{-73.2,26},{
             -73.2,25.6}},
         color={0,0,127},
         smooth=Smooth.None));
-    connect(intGains[(i*3) - 2], airFlowRateSplit.relOccupation[i]) annotation (
+    connect(intGains[(i*4)], airFlowRateSplit.relOccupation[i]) annotation (
        Line(points={{76,-100},{74,-100},{74,0},{47.24,0},{47.24,20.8}},
                                                                      color={0,0,
             127}));
@@ -221,7 +222,8 @@ equation
   end for;
 
   connect(AHU[1], AirHandlingUnit.T_supplyAir) annotation (Line(
-      points={{-100,-31},{-100,-14},{-86,-14},{-86,2},{24,2},{24,19.75},{12.4,19.75}},
+      points={{-100,-23.5},{-100,-14},{-86,-14},{-86,2},{24,2},{24,19.75},{12.4,
+          19.75}},
       color={0,0,127},
       smooth=Smooth.None));
 
@@ -230,18 +232,18 @@ equation
       color={0,0,127},
       smooth=Smooth.None));
   connect(AHU[4], airFlowRate.profile) annotation (Line(
-      points={{-100,-1},{-100,-16},{-86,-16},{-86,30},{-73.2,30},{-73.2,30.4}},
+      points={{-100,-8.5},{-100,-16},{-86,-16},{-86,30},{-73.2,30},{-73.2,30.4}},
       color={0,0,127},
       smooth=Smooth.None));
 
   connect(AHU[2], AirHandlingUnit.phi_supplyAir[1]) annotation (Line(
-      points={{-100,-21},{-100,-16},{-86,-16},{-86,2},{24,2},{24,16},{12.4,16},{
-          12.4,16.75}},
+      points={{-100,-18.5},{-100,-16},{-86,-16},{-86,2},{24,2},{24,16},{12.4,16},
+          {12.4,15.625}},
       color={0,0,127},
       smooth=Smooth.None));
   connect(AHU[3], AirHandlingUnit.phi_supplyAir[2]) annotation (Line(
-      points={{-100,-11},{-100,-16},{-86,-16},{-86,2},{24,2},{24,16},{12.4,16},{
-          12.4,15.25}},
+      points={{-100,-13.5},{-100,-16},{-86,-16},{-86,2},{24,2},{24,16},{12.4,16},
+          {12.4,16.375}},
       color={0,0,127},
       smooth=Smooth.None));
   connect(AirHandlingUnit.Pel, Pel) annotation (Line(points={{0.15,11.875},{0.15,
@@ -253,13 +255,15 @@ equation
   connect(replicatorTemperatureVentilation.y, zone.ventTemp) annotation (Line(
         points={{23,58.5},{23,66.22},{38.84,66.22}}, color={0,0,127}));
   connect(TAirAHUAvg.T, minTemp.u)
-    annotation (Line(points={{34,-28},{34,-28},{31,-28}}, color={0,0,127}));
+    annotation (Line(points={{33.6,-28},{33.6,-28},{31,-28}},
+                                                          color={0,0,127}));
   connect(minTemp.y, AirHandlingUnit.T_extractAir) annotation (Line(points={{19.5,
           -28},{16,-28},{16,-16},{26,-16},{26,33.25},{12.4,33.25}}, color={0,0,127}));
   connect(zone.ventRate, airFlowRateSplit.airFlowOut) annotation (Line(points={{
           38.84,60.89},{44,60.89},{44,38},{44,38},{44,35.2}}, color={0,0,127}));
-  connect(AHU[4], airFlowRateSplit.profile) annotation (Line(points={{-100,-1},{
-          -100,-1},{-100,-18},{-86,-18},{-86,2},{40,2},{40,10},{40.4,10},{40.4,20.8}},
+  connect(AHU[4], airFlowRateSplit.profile) annotation (Line(points={{-100,-8.5},
+          {-100,-8.5},{-100,-18},{-86,-18},{-86,2},{40,2},{40,10},{40.4,10},{40.4,
+          20.8}},
         color={0,0,127}));
   connect(AirHandlingUnit.T_supplyAirOut, replicatorTemperatureVentilation.u)
     annotation (Line(points={{12.4,23.5},{23,23.5},{23,47}}, color={0,0,127}));
