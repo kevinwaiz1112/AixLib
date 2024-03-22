@@ -54,7 +54,7 @@ model LPG_intGains
     extrapolation=Modelica.Blocks.Types.Extrapolation.Periodic,
     tableName="Internals",
     fileName=Modelica.Utilities.Files.loadResource(
-        "C:\03_Repos\sekquasens_interfaces\Data\InternalGains_standard.txt"),
+        "modelica://AixLib/SQS_LPG/InternalGains_standard.txt"),
     columns=2:4)
     "Profiles for internal gains"
     annotation (Placement(transformation(extent={{88,24},{72,40}})));
