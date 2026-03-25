@@ -47,7 +47,7 @@ model LPG_intGains
             {98,52},{120,74}})));
   Modelica.Blocks.Math.Gain gain(k=1000)
     annotation (Placement(transformation(extent={{-42,-26},{-28,-12}})));
-  Modelica.Blocks.Math.Gain gain1(k=1000)
+  Modelica.Blocks.Math.Gain gain1(k=1)
     annotation (Placement(transformation(extent={{-38,-94},{-24,-80}})));
   Modelica.Blocks.Sources.CombiTimeTable tableInternalGains(
     tableOnFile=true,
