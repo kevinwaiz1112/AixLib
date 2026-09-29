@@ -1,0 +1,5 @@
+simulateModel("AixLib.ThermalZones.ReducedOrder.Validation.InterzonalBidirectional2C", stopTime=86400, method="Dassl", tolerance=1e-08, resultFile="InterzonalBidirectional2C");
+createPlot(id=1, position={15, 15, 900, 650}, y={"TZone1.y", "TZone2.y"}, grid=true, displayUnits={"degC", "degC"});
+createPlot(id=2, position={15, 15, 900, 650}, y={"senQ1.Q_flow", "senQ2.Q_flow"}, grid=true);
+createPlot(id=3, position={15, 15, 900, 650}, y={"wallZone1.extWallRC.thermCapExt[1].T", "wallZone1.extWallRC.thermCapExt[2].T"}, grid=true, displayUnits={"degC", "degC"});
+createPlot(id=4, position={15, 15, 900, 650}, y={"energyBalanceResidual"}, grid=true);

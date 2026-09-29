@@ -1,4 +1,4 @@
-﻿within AixLib.DataBase.ThermalZones;
+within AixLib.DataBase.ThermalZones;
 record ZoneBaseRecord "Base record definition for zone records"
   extends Modelica.Icons.Record;
 
@@ -69,6 +69,12 @@ record ZoneBaseRecord "Base record definition for zone records"
     "Area of neighboured zone borders";
   parameter Modelica.Units.SI.CoefficientOfHeatTransfer hConNZ[nNZs]
     "Convective coefficient of heat transfer of neighboured zone borders (indoor)";
+  parameter Integer hConNZMethod[nNZs]=fill(3, nNZs)
+    "Indoor convection method for NZ borders: 2=Glueck dynamic, 3=constant";
+  parameter Integer surfaceOrientationNZ[nNZs]=fill(1, nNZs)
+    "NZ indoor surface orientation: 1=vertical, 2=horizontal facing up, 3=horizontal facing down";
+  parameter Modelica.Units.SI.TemperatureDifference dTConNZSmall=0.1
+    "Regularization band for dynamic NZ convection correlations";
   parameter Integer nNZ(min=1)
     "Number of RC-elements of neighboured zone borders";
   parameter Modelica.Units.SI.ThermalResistance RNZ[nNZs, nNZ]

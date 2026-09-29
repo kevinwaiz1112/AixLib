@@ -9,7 +9,16 @@ model FiveElements
   parameter Modelica.Units.SI.Area ANZ[nNZs] "Area of neighboured zone borders"
     annotation (Dialog(group="Zone borders"));
   parameter Modelica.Units.SI.CoefficientOfHeatTransfer hConNZ[nNZs]
-    "Convective coefficient of heat transfer of neighboured zone borders (indoor)"
+    "Convective coefficient of heat transfer of neighboured zone borders (indoor); used as fallback for constant method"
+    annotation (Dialog(group="Zone borders"));
+  parameter Integer hConNZMethod[nNZs]=fill(3, nNZs)
+    "Indoor convection method for NZ borders: 2=Glueck dynamic, 3=constant"
+    annotation (Dialog(group="Zone borders"));
+  parameter Integer surfaceOrientationNZ[nNZs]=fill(1, nNZs)
+    "NZ indoor surface orientation: 1=vertical, 2=horizontal facing up, 3=horizontal facing down"
+    annotation (Dialog(group="Zone borders"));
+  parameter Modelica.Units.SI.TemperatureDifference dTConNZSmall=0.1
+    "Regularization band around zero temperature difference for dynamic NZ convection"
     annotation (Dialog(group="Zone borders"));
   parameter Integer nNZ(min = 1) "Number of RC-elements of neighboured zone borders"
     annotation(Dialog(group="Zone borders"));
@@ -61,22 +70,25 @@ model FiveElements
       each final unit="W/m2") if ATotNZ > 0
     "specific radiation to neighboured zone border surfaces"
     annotation (Placement(transformation(extent={{240,50},{260,70}})));
+  Modelica.Blocks.Interfaces.RealOutput hConNZActual[nNZs](
+      each final quantity="CoefficientOfHeatTransfer",
+      each final unit="W/(m2.K)") if ATotNZ > 0
+    "Actual convective heat-transfer coefficient at each neighboured-zone border";
 
 protected
   parameter Modelica.Units.SI.Area ATotNZ=sum(ANZ)
     "Sum of neighboured zone border areas";
-  Modelica.Thermal.HeatTransfer.Components.Convection convNZ[nNZs] if
-     ATotNZ > 0 "Convective heat transfer of neighboured zone borders" annotation (
-      Placement(transformation(
+  AixLib.Utilities.HeatTransfer.HeatConvInside convNZ[nNZs](
+      final calcMethod=hConNZMethod,
+      final hCon_const=hConNZ,
+      final surfaceOrientation=surfaceOrientationNZ,
+      final A={if area > 0 then area else Modelica.Constants.eps for area in ANZ},
+      each final dT_small=dTConNZSmall) if ATotNZ > 0
+    "Convective heat transfer of neighboured zone borders; optionally temperature-direction dependent"
+    annotation (Placement(transformation(
         extent={{10,10},{-10,-10}},
         rotation=90,
         origin={102,124})));
-  Modelica.Blocks.Sources.Constant hConNZ_const[nNZs](final k=ANZ .* hConNZ) if
-       ATotNZ > 0 "Coefficient of convective heat transfer for neighbourd zone borders"
-    annotation (Placement(transformation(
-        extent={{-5,-5},{5,5}},
-        rotation=180,
-        origin={134,124})));
   Modelica.Blocks.Math.Gain specificRadFlow[nNZs](
     final k(each unit="1/m2") = fill(1,nNZs)./{if A > 0 then A else 1 for A in ANZ},
     u(each final unit="W"),
@@ -136,18 +148,19 @@ equation
   // connect NZ borders
   if ATotNZ > 0 then
     for i in 1:nNZs loop
+      hConNZActual[i] = convNZ[i].hCon;
+    end for;
+    for i in 1:nNZs loop
       if ANZ[i] > 0 then
         connect(nz[i], nzRC[i].port_b) annotation (Line(points={{215,178},{216,178},
                 {216,174},{102,174},{102,165},{103,165}},
                                              color={191,0,0}));
-        connect(convNZ[i].solid, nzRC[i].port_a) annotation (Line(points={{102,134},{102,140},
+        connect(convNZ[i].port_b, nzRC[i].port_a) annotation (Line(points={{102,134},{102,140},
           {102,145},{103,145}}, color={191,0,0}));
-        connect(convNZ[i].Gc, hConNZ_const[i].y)
-          annotation (Line(points={{112,124},{128.5,124}}, color={0,0,127}));
-        connect(convNZ[i].fluid, senTAir.port) annotation (Line(points={{102,114},
+        connect(convNZ[i].port_a, senTAir.port) annotation (Line(points={{102,114},
                 {102,98},{66,98},{66,0},{80,0}},
                                             color={191,0,0}));
-        connect(heatFlowSensor[i].port_b, convNZ[i].solid) annotation (Line(points={{130,
+        connect(heatFlowSensor[i].port_b, convNZ[i].port_b) annotation (Line(points={{130,
                 148},{120,148},{120,140},{102,140},{102,134}}, color={191,0,0}));
         connect(nzIndoorSurface[i], heatFlowSensor[i].port_a) annotation (Line(points={{134,
             -180},{134,-166},{114,-166},{114,44},{118,44},{118,100},{154,100},{154,
@@ -279,6 +292,10 @@ equation
   Documentation(revisions="<html>
  <ul>
  <li>
+ September 29, 2026:<br/>
+ Added optional temperature-dependent indoor convection for interzonal floor and ceiling surfaces.
+ </li>
+ <li>
  April 20, 2023, by Philip Groesdonk:<br/>
  First Implementation. This is for AixLib issue
  <a href=\"https://github.com/RWTH-EBC/AixLib/issues/1080\">#1080</a>.
@@ -297,6 +314,14 @@ equation
    Ths implementation increases calculation times and calculation complexity -
    also because the neighboured zones are directly connected via heat flow 
    ports to ensure no energy is produced out of or lost to nowhere.
+   The indoor convective film of each neighboured-zone border can be selected
+   through <code>hConNZMethod</code>. Method 3 retains the historical constant
+   coefficient <code>hConNZ</code>. Method 2 uses
+   <code>AixLib.Utilities.HeatTransfer.HeatConvInside</code> with the supplied
+   <code>surfaceOrientationNZ</code>, allowing horizontal floor/ceiling convection
+   to respond smoothly when the temperature difference changes sign.
+   </p>
+   <p>
    The neighboured zone borders are parameterized via the length of the RC-chain
    <code>nNZ</code>,
    the vector of capacities <code>CNZ[nNZs, nNZ]</code>, the vector of resistances
