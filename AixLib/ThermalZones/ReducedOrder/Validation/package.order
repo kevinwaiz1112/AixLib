@@ -1,5 +1,7 @@
 InterzonalBidirectional2C
 InterzonalBidirectional2CDynamicConvection
+HeaterCoolerDisabled
+FiveElementsZeroNeighbour
 RoomSteadyState
 RoomWithLatentGain
 RoomWithoutLatentGain

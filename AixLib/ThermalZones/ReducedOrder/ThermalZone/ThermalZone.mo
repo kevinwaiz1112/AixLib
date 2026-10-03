@@ -32,12 +32,6 @@ model ThermalZone "Thermal zone containing moisture balance"
       tab="IdealHeaterCooler",
       group="Heater",
       enable=not recOrSep));
-  parameter Boolean useHeatDeliveryDynamics=false
-    "Enable simplified first-order emitter/heat-delivery dynamics"
-    annotation (Dialog(tab="IdealHeaterCooler", group="Heater", enable=not recOrSep));
-  parameter Modelica.Units.SI.Time tauHeatDelivery=1
-    "Simplified heat-delivery time constant"
-    annotation (Dialog(tab="IdealHeaterCooler", group="Heater", enable=not recOrSep and useHeatDeliveryDynamics));
   parameter Boolean Cooler_on=true "Activates the cooler"
     annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep));
   parameter Real h_cooler=0 "Upper limit controller output of the cooler"
@@ -51,12 +45,6 @@ model ThermalZone "Thermal zone containing moisture balance"
       tab="IdealHeaterCooler",
       group="Cooler",
       enable=not recOrSep));
-  parameter Boolean useCoolDeliveryDynamics=false
-    "Enable simplified first-order cooling-delivery dynamics"
-    annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep));
-  parameter Modelica.Units.SI.Time tauCoolDelivery=1
-    "Simplified cooling-delivery time constant"
-    annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep and useCoolDeliveryDynamics));
 
   // CO2 parameters
   parameter Modelica.Units.SI.MassFraction XCO2_amb=6.12157E-4
@@ -166,25 +154,19 @@ model ThermalZone "Thermal zone containing moisture balance"
     each l_heater=l_heater,
     each KR_heater=KR_heater,
     each TN_heater=TN_heater,
-    each useHeatDeliveryDynamics=useHeatDeliveryDynamics,
-    each tauHeatDelivery=tauHeatDelivery,
     each h_cooler=h_cooler,
     each l_cooler=l_cooler,
     each KR_cooler=KR_cooler,
     each TN_cooler=TN_cooler,
-    each useCoolDeliveryDynamics=useCoolDeliveryDynamics,
-    each tauCoolDelivery=tauCoolDelivery,
     final zoneParam=zoneParam,
     each recOrSep=recOrSep,
     each Heater_on=Heater_on,
     each Cooler_on=Cooler_on,
-    each staOrDyn=not zoneParam.withIdealThresholds) if (ATot > 0 or zoneParam.VAir
-     > 0) and (recOrSep and (zoneParam.HeaterOn or zoneParam.CoolerOn)) or (
-    not recOrSep and (Heater_on or Cooler_on))
+    each staOrDyn=not zoneParam.withIdealThresholds) if (ATot > 0 or zoneParam.VAir > 0)
                                       "Heater Cooler with PI control"
     annotation (Placement(transformation(extent={{62,26},{84,46}})));
   Utilities.Sources.HeaterCooler.HeaterCoolerController heaterCoolerController(zoneParam=
-       zoneParam) if zoneParam.withIdealThresholds
+       zoneParam) if (ATot > 0 or zoneParam.VAir > 0) and zoneParam.withIdealThresholds
     annotation (Placement(transformation(extent={{-9,-8},{9,8}},
         rotation=0,
         origin={69,18})));
@@ -192,8 +174,7 @@ model ThermalZone "Thermal zone containing moisture balance"
     final quantity="ThermodynamicTemperature",
     final unit="K",
     displayUnit="degC",
-    min=0) if ((recOrSep and zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
-           "Set point for cooler" annotation (Placement(transformation(
+    min=0) "Set point for cooler" annotation (Placement(transformation(
         extent={{-20,-20},{20,20}},
         rotation=0,
         origin={-108,8}), iconTransformation(
@@ -204,8 +185,7 @@ model ThermalZone "Thermal zone containing moisture balance"
     final quantity="ThermodynamicTemperature",
     final unit="K",
     displayUnit="degC",
-    min=0) if ((recOrSep and zoneParam.HeaterOn) or (not recOrSep and Heater_on))
-           "Set point for heater" annotation (Placement(transformation(
+    min=0) "Set point for heater" annotation (Placement(transformation(
         extent={{20,20},{-20,-20}},
         rotation=180,
         origin={-108,-16}),iconTransformation(
@@ -213,32 +193,14 @@ model ThermalZone "Thermal zone containing moisture balance"
         rotation=180,
         origin={-96,12})));
   Modelica.Blocks.Interfaces.RealOutput PHeater(final quantity="HeatFlowRate",
-      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
-    zoneParam.HeaterOn) or (not recOrSep and Heater_on))
-    "Delivered power for heating" annotation (Placement(transformation(extent={{100,-10},
+      final unit="W")
+    "Power for heating" annotation (Placement(transformation(extent={{100,-10},
             {120,10}}), iconTransformation(extent={{100,-30},{120,-10}})));
-  Modelica.Blocks.Interfaces.RealOutput PHeaterRequested(final quantity="HeatFlowRate",
-      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
-    zoneParam.HeaterOn) or (not recOrSep and Heater_on))
-    "PI-controller requested heating power before emitter dynamics";
-  Modelica.Blocks.Interfaces.RealOutput PHeaterDeliveryDeficit(final quantity="HeatFlowRate",
-      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
-    zoneParam.HeaterOn) or (not recOrSep and Heater_on))
-    "Positive requested-minus-delivered heating power due to emitter dynamics";
   Modelica.Blocks.Interfaces.RealOutput PCooler(final quantity="HeatFlowRate",
-      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
-    zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
+      final unit="W")
     "Power for cooling" annotation (Placement(transformation(extent={{100,-30},
             {120,-10}}), iconTransformation(extent={{100,-50},{120,-30}})));
-  Modelica.Blocks.Interfaces.RealOutput PCoolerRequested(final quantity="HeatFlowRate",
-      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
-    zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
-    "PI-controller requested cooling power before delivery dynamics";
-  Modelica.Blocks.Interfaces.RealOutput PCoolerDeliveryDeficit(final quantity="HeatFlowRate",
-      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
-    zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
-    "Positive requested-minus-delivered cooling-power magnitude due to delivery dynamics";
-    Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a nzHeatFlow[zoneParam.nNZs] if sum(zoneParam.ANZ) > 0
+    Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a nzHeatFlow[zoneParam.nNZs]
     "surface heat port for nz borders - inner surface if zone index is higher than index of other zone, outer if lower"
     annotation (Placement(transformation(extent={{94,86},{114,106}}),
                             iconTransformation(extent={{90,70},{110,90}})));
@@ -612,35 +574,33 @@ equation
     annotation (Line(points={{2.4,16},{21,16},{21,14}}, color={0,0,127}));
   connect(hConWin.y, theConWin.Gc)
     annotation (Line(points={{22,43.6},{22,40},{21,40}}, color={0,0,127}));
-  connect(heaterCoolerController.heaterActive, heaterCooler.heaterActive)
-    annotation (Line(points={{76.38,19.6},{80,19.6},{80,28},{80.48,28},{80.48,28.8}},
-        color={255,0,255}));
-  connect(heaterCoolerController.coolerActive, heaterCooler.coolerActive)
-    annotation (Line(points={{76.38,16.4},{76.38,16},{66,16},{66,26},{65.3,26},{
-          65.3,28.8}}, color={255,0,255}));
-  connect(TSetHeat, heaterCooler.setPointHeat) annotation (Line(points={{-108,-16},
-          {-86,-16},{-86,6},{74,6},{74,18},{75.42,18},{75.42,28.8}}, color={0,0,
-          127}));
-  connect(TSetCool, heaterCooler.setPointCool) annotation (Line(points={{-108,8},
+  if ATot > 0 or zoneParam.VAir > 0 then
+    if zoneParam.withIdealThresholds then
+      connect(heaterCoolerController.heaterActive, heaterCooler.heaterActive)
+        annotation (Line(points={{76.38,19.6},{80,19.6},{80,28},{80.48,28},{80.48,28.8}},
+            color={255,0,255}));
+      connect(heaterCoolerController.coolerActive, heaterCooler.coolerActive)
+        annotation (Line(points={{76.38,16.4},{76.38,16},{66,16},{66,26},{65.3,26},{
+              65.3,28.8}}, color={255,0,255}));
+      connect(weaBus, heaterCoolerController.weaBus) annotation (Line(
+          points={{-100,34},{-86,34},{-86,10},{58,10},{58,21.44},{62.07,21.44}},
+          color={255,204,51},
+          thickness=0.5));
+    end if;
+    connect(TSetHeat, heaterCooler.setPointHeat) annotation (Line(points={{-108,-16},
+          {-86,-16},{-86,6},{74,6},{74,18},{75.42,18},{75.42,28.8}}, color={0,0,127}));
+    connect(TSetCool, heaterCooler.setPointCool) annotation (Line(points={{-108,8},
           {70,8},{70,16},{70.36,16},{70.36,28.8}}, color={0,0,127}));
-  connect(heaterCooler.coolingPower, PCooler) annotation (Line(points={{84,35.4},
+    connect(heaterCooler.coolingPower, PCooler) annotation (Line(points={{84,35.4},
           {84,-2},{98,-2},{98,-20},{110,-20}}, color={0,0,127}));
-  connect(heaterCooler.coolingPowerRequested, PCoolerRequested);
-  connect(heaterCooler.coolingPowerDeliveryDeficit, PCoolerDeliveryDeficit);
-  connect(heaterCooler.heatingPower, PHeater) annotation (Line(points={{84,40},{
+    connect(heaterCooler.heatingPower, PHeater) annotation (Line(points={{84,40},{
           90,40},{90,0},{110,0}}, color={0,0,127}));
-  connect(heaterCooler.heatingPowerRequested, PHeaterRequested);
-  connect(heaterCooler.heatingPowerDeliveryDeficit, PHeaterDeliveryDeficit);
-  connect(weaBus, heaterCoolerController.weaBus) annotation (Line(
-      points={{-100,34},{-86,34},{-86,10},{58,10},{58,21.44},{62.07,21.44}},
-      color={255,204,51},
-      thickness=0.5), Text(
-      string="%first",
-      index=-1,
-      extent={{-6,3},{-6,3}},
-      horizontalAlignment=TextAlignment.Right));
-  connect(heaterCooler.heatCoolRoom, intGainsConv) annotation (Line(points={{82.9,
+    connect(heaterCooler.heatCoolRoom, intGainsConv) annotation (Line(points={{82.9,
           32},{96,32},{96,20},{104,20}}, color={191,0,0}));
+  else
+    PHeater = 0;
+    PCooler = 0;
+  end if;
   connect(corGMod.solarRadWinTrans, simpleExternalShading.solRadWin)
     annotation (Line(points={{-3.4,49},{2.3,49},{2.3,48.92},{3.88,48.92}},
         color={0,0,127}));
@@ -707,10 +667,8 @@ equation
             -62},{-40,-62},{-40,-63.4}}, color={0,0,127}));
   end if;
 
-  if sum(zoneParam.ANZ) > 0 then
-    connect(ROM.nz, nzHeatFlow) annotation (Line(points={{80.5,92},{80,92},{80,96},
-            {104,96}}, color={191,0,0}));
-  end if;
+  connect(ROM.nz, nzHeatFlow) annotation (Line(points={{80.5,92},{80,92},{80,96},
+          {104,96}}, color={191,0,0}));
 
 if use_NaturalAirExchange and not use_MechanicalAirExchange then
     connect(weaBus.TDryBul, preTemVen.T) annotation (Line(

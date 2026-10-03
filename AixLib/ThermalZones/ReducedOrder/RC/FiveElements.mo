@@ -40,7 +40,7 @@ model FiveElements
   parameter Integer thisZoneIndex "index of this zone"
     annotation (Dialog(group="Zone borders"));
 
-  Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a nz[nNZs] if ATotNZ > 0
+  Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a nz[nNZs]
     "Ambient port for neighboured zone borders" annotation (Placement(
         transformation(extent={{205,168},{225,188}}), iconTransformation(extent={{175,170},
             {195,190}})));
@@ -48,9 +48,9 @@ model FiveElements
     final RExt=RNZ,
     final RExtRem=RNZRem,
     final CExt=CNZ,
-    final pass_through={thisZoneIndex > otherNZIndex[i] for i in 1:nNZs},
+    final pass_through={ANZ[i] <= 0 or thisZoneIndex > otherNZIndex[i] for i in 1:nNZs},
     each final n=nNZ,
-    each final T_start=T_start) if ATotNZ > 0 "RC-element for NZ borders"
+    each final T_start=T_start) "RC-element for NZ borders"
     annotation (Placement(transformation(
         extent={{-10,-11},{10,11}},
         rotation=90,
@@ -59,20 +59,19 @@ model FiveElements
      indoorPortNZ "Auxiliary port at indoor surface of NZ borders"
     annotation (Placement(transformation(extent={{124,-190},{144,-170}}),
         iconTransformation(extent={{-50,-190},{-30,-170}})));
-  Modelica.Thermal.HeatTransfer.Sensors.HeatFlowSensor heatFlowSensor[nNZs] if
-    ATotNZ > 0
+  Modelica.Thermal.HeatTransfer.Sensors.HeatFlowSensor heatFlowSensor[nNZs]
     "measures radiative heat flow to NZ border surfaces" annotation (Placement(
         transformation(
         extent={{8,8},{-8,-8}},
         rotation=0,
         origin={138,148})));
   Modelica.Blocks.Interfaces.RealOutput qRad[nNZs](each final quantity="RadiantEnergyFluenceRate",
-      each final unit="W/m2") if ATotNZ > 0
+      each final unit="W/m2")
     "specific radiation to neighboured zone border surfaces"
     annotation (Placement(transformation(extent={{240,50},{260,70}})));
   Modelica.Blocks.Interfaces.RealOutput hConNZActual[nNZs](
       each final quantity="CoefficientOfHeatTransfer",
-      each final unit="W/(m2.K)") if ATotNZ > 0
+      each final unit="W/(m2.K)")
     "Actual convective heat-transfer coefficient at each neighboured-zone border";
 
 protected
@@ -83,7 +82,7 @@ protected
       final hCon_const=hConNZ,
       final surfaceOrientation=surfaceOrientationNZ,
       final A={if area > 0 then area else Modelica.Constants.eps for area in ANZ},
-      each final dT_small=dTConNZSmall) if ATotNZ > 0
+      each final dT_small=dTConNZSmall)
     "Convective heat transfer of neighboured zone borders; optionally temperature-direction dependent"
     annotation (Placement(transformation(
         extent={{10,10},{-10,-10}},
@@ -92,7 +91,7 @@ protected
   Modelica.Blocks.Math.Gain specificRadFlow[nNZs](
     final k(each unit="1/m2") = fill(1,nNZs)./{if A > 0 then A else 1 for A in ANZ},
     u(each final unit="W"),
-    y(each final unit="W/m2")) if ATotNZ > 0
+    y(each final unit="W/m2"))
     "calculates specific radiative heat flow to  neighboured zone borders"
     annotation (Placement(transformation(extent={{166,116},{176,126}})));
 
@@ -145,28 +144,46 @@ protected
         rotation=0)));
 
 equation
-  // connect NZ borders
-  if ATotNZ > 0 then
-    for i in 1:nNZs loop
-      hConNZActual[i] = convNZ[i].hCon;
-    end for;
-    for i in 1:nNZs loop
-      if ANZ[i] > 0 then
-        connect(nz[i], nzRC[i].port_b) annotation (Line(points={{215,178},{216,178},
-                {216,174},{102,174},{102,165},{103,165}},
-                                             color={191,0,0}));
-        connect(convNZ[i].port_b, nzRC[i].port_a) annotation (Line(points={{102,134},{102,140},
-          {102,145},{103,145}}, color={191,0,0}));
-        connect(convNZ[i].port_a, senTAir.port) annotation (Line(points={{102,114},
-                {102,98},{66,98},{66,0},{80,0}},
-                                            color={191,0,0}));
-        connect(heatFlowSensor[i].port_b, convNZ[i].port_b) annotation (Line(points={{130,
-                148},{120,148},{120,140},{102,140},{102,134}}, color={191,0,0}));
+  // Neighbour-zone convection components remain structurally present even if
+  // ANZ contains only zero-area placeholders.
+  for i in 1:nNZs loop
+    hConNZActual[i] = convNZ[i].hCon;
+  end for;
+
+  // Connect each neighbouring-zone slot. Real borders use the physical
+  // interzonal path. Zero-area slots are inert structural placeholders so no
+  // component is conditionally removed or left unconnected.
+  for i in 1:nNZs loop
+    if ANZ[i] > 0 then
+      connect(nz[i], nzRC[i].port_b) annotation (Line(points={{215,178},{216,178},
+              {216,174},{102,174},{102,165},{103,165}},
+                                           color={191,0,0}));
+      connect(convNZ[i].port_b, nzRC[i].port_a) annotation (Line(points={{102,134},{102,140},
+        {102,145},{103,145}}, color={191,0,0}));
+      connect(convNZ[i].port_a, senTAir.port) annotation (Line(points={{102,114},
+              {102,98},{66,98},{66,0},{80,0}},
+                                          color={191,0,0}));
+      connect(heatFlowSensor[i].port_b, convNZ[i].port_b) annotation (Line(points={{130,
+              148},{120,148},{120,140},{102,140},{102,134}}, color={191,0,0}));
+      if indoorPortNZ then
         connect(nzIndoorSurface[i], heatFlowSensor[i].port_a) annotation (Line(points={{134,
             -180},{134,-166},{114,-166},{114,44},{118,44},{118,100},{154,100},{154,
             148},{146,148}}, color={191,0,0}));
       end if;
-    end for;
+    else
+      connect(nz[i], nzRC[i].port_b);
+      connect(nzRC[i].port_a, senTAir.port);
+      connect(convNZ[i].port_a, senTAir.port);
+      connect(convNZ[i].port_b, senTAir.port);
+      connect(heatFlowSensor[i].port_a, senTAir.port);
+      connect(heatFlowSensor[i].port_b, senTAir.port);
+      if indoorPortNZ then
+        connect(nzIndoorSurface[i], senTAir.port);
+      end if;
+    end if;
+  end for;
+
+  if ATotNZ > 0 and nNZs > 1 then
     for i in 2:nNZs loop
       for j in 1:(i-1) loop
         if ANZ[i] > 0 and ANZ[j] > 0 then
@@ -186,7 +203,7 @@ equation
     end for;
   end if;
 
-  if ATotExt > 0 then
+  if ATotExt > 0 and ATotNZ > 0 then
     for j in 1:nNZs loop
       if ANZ[j] > 0 then
         connect(heatFlowSensor[j].port_a, resExtWallNZ[j].port_b) annotation (Line(
@@ -198,7 +215,7 @@ equation
     end for;
   end if;
 
-  if ATotWin > 0 then
+  if ATotWin > 0 and ATotNZ > 0 then
     for j in 1:nNZs loop
       if ANZ[j] > 0 then
         connect(resWinNZ[j].port_b, heatFlowSensor[j].port_a) annotation (Line(points={{106,76},
@@ -210,7 +227,7 @@ equation
     end for;
   end if;
 
-  if AInt > 0 then
+  if AInt > 0 and ATotNZ > 0 then
     for i in 1:nNZs loop
       if ANZ[i] > 0 then
         connect(resIntNZ[i].port_b, heatFlowSensor[i].port_a) annotation (Line(points={{132,76},
@@ -221,7 +238,7 @@ equation
     end for;
   end if;
 
-  if AFloor > 0 then
+  if AFloor > 0 and ATotNZ > 0 then
     for i in 1:nNZs loop
       if ANZ[i] > 0 then
         connect(resFloorNZ[i].port_b, heatFlowSensor[i].port_a) annotation (Line(points={{158,76},
@@ -234,7 +251,7 @@ equation
     end for;
   end if;
 
-  if ARoof > 0 then
+  if ARoof > 0 and ATotNZ > 0 then
     for j in 1:nNZs loop
       if ANZ[j] > 0 then
         connect(resRoofNZ[j].port_b, heatFlowSensor[j].port_a) annotation (Line(

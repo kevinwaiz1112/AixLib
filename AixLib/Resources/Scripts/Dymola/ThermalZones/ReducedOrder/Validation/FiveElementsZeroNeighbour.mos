@@ -1,0 +1,2 @@
+simulateModel("AixLib.ThermalZones.ReducedOrder.Validation.FiveElementsZeroNeighbour", stopTime=10, method="Dassl", tolerance=1e-08, resultFile="FiveElementsZeroNeighbour");
+createPlot(id=1, position={15, 15, 900, 650}, y={"zone.nz[1].Q_flow", "zone.hConNZActual[1]"}, grid=true);

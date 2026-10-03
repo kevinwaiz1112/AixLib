@@ -1,0 +1,2 @@
+simulateModel("AixLib.ThermalZones.ReducedOrder.Validation.HeaterCoolerDisabled", stopTime=10, method="Dassl", tolerance=1e-08, resultFile="HeaterCoolerDisabled");
+createPlot(id=1, position={15, 15, 900, 650}, y={"heaCoo.heatingPower", "heaCoo.coolingPower"}, grid=true);

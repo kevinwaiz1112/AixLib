@@ -6,8 +6,7 @@ model HeaterCoolerPI "heater and cooler with variable setpoints"
   Modelica.Blocks.Interfaces.RealInput setPointCool(
     final quantity="ThermodynamicTemperature",
     final unit="K",
-    displayUnit="degC") if ((recOrSep and zoneParam.CoolerOn) or (not recOrSep
-     and Cooler_on))    annotation (
+    displayUnit="degC") annotation (
       Placement(transformation(extent={{-120,-60},{-80,-20}}),
         iconTransformation(
         extent={{-20,-20},{20,20}},
@@ -16,16 +15,15 @@ model HeaterCoolerPI "heater and cooler with variable setpoints"
   Modelica.Blocks.Interfaces.RealInput setPointHeat(
     final quantity="ThermodynamicTemperature",
     final unit="K",
-    displayUnit="degC") if ((recOrSep and zoneParam.HeaterOn) or (not recOrSep
-     and Heater_on))    annotation (
+    displayUnit="degC") annotation (
       Placement(transformation(extent={{-120,20},{-80,60}}), iconTransformation(
         extent={{-20,-20},{20,20}},
         rotation=90,
         origin={22,-72})));
-  Modelica.Blocks.Sources.BooleanExpression booleanExpressionHeater(y=if not
-        recOrSep then Heater_on else zoneParam.HeaterOn) if staOrDyn annotation (Placement(transformation(extent={{-52,14},{-33,30}})));
-  Modelica.Blocks.Sources.BooleanExpression booleanExpressionCooler(y=if not
-        recOrSep then Cooler_on else zoneParam.CoolerOn) if staOrDyn annotation (Placement(transformation(extent={{-52,-30},{-32,-14}})));
+  Modelica.Blocks.Sources.BooleanExpression booleanExpressionHeater(y=heatActive) if staOrDyn
+    annotation (Placement(transformation(extent={{-52,14},{-33,30}})));
+  Modelica.Blocks.Sources.BooleanExpression booleanExpressionCooler(y=coolActive) if staOrDyn
+    annotation (Placement(transformation(extent={{-52,-30},{-32,-14}})));
   Modelica.Blocks.Interfaces.BooleanInput heaterActive if not staOrDyn
     "Switches Controler on and off" annotation (Placement(transformation(extent=
            {{-120,-6},{-80,34}}), iconTransformation(
@@ -38,6 +36,10 @@ model HeaterCoolerPI "heater and cooler with variable setpoints"
         extent={{-20,-20},{20,20}},
         rotation=90,
         origin={-70,-72})));
+  Modelica.Blocks.Sources.BooleanExpression dynamicHeaterActive(y=heaterActive and heatActive) if not staOrDyn
+    "Gate dynamic heater activation with the static heater enable flag";
+  Modelica.Blocks.Sources.BooleanExpression dynamicCoolerActive(y=coolerActive and coolActive) if not staOrDyn
+    "Gate dynamic cooler activation with the static cooler enable flag";
 equation
   if staOrDyn then
     connect(booleanExpressionHeater.y, pITempHeat.onOff) annotation (Line(points={{-32.05,
@@ -47,12 +49,8 @@ equation
           -22},{-24,-22},{-24,-15},{-19,-15}}, color={255,0,255},
         pattern=LinePattern.Dash));
   else
-    connect(heaterActive, pITempHeat.onOff) annotation (Line(points={{-100,14},{-60,
-           14},{-60,15},{-19,15}}, color={255,0,255},
-        pattern=LinePattern.Dash));
-    connect(pITempCool.onOff, coolerActive) annotation (Line(points={{-19,-15},{-24,
-          -15},{-24,-14},{-100,-14}}, color={255,0,255},
-        pattern=LinePattern.Dash));
+    connect(dynamicHeaterActive.y, pITempHeat.onOff);
+    connect(dynamicCoolerActive.y, pITempCool.onOff);
   end if;
   connect(setPointHeat, pITempHeat.setPoint)
     annotation (Line(points={{-100,40},{-18,40},{-18,29}}, color={0,0,127}));
