@@ -91,11 +91,15 @@ partial model PartialMultizone "Partial model for multizone models"
     each l_heater=l_heater,
     each KR_heater=KR_heater,
     each TN_heater=TN_heater,
+    each useHeatDeliveryDynamics=useHeatDeliveryDynamics,
+    each tauHeatDelivery=tauHeatDelivery,
     each Cooler_on=Cooler_on,
     each h_cooler=h_cooler,
     each l_cooler=l_cooler,
     each KR_cooler=KR_cooler,
     each TN_cooler=TN_cooler,
+    each useCoolDeliveryDynamics=useCoolDeliveryDynamics,
+    each tauCoolDelivery=tauCoolDelivery,
     each use_C_flow=use_C_flow,
     each use_moisture_balance=use_moisture_balance,
     each XCO2_amb=XCO2_amb,
@@ -134,6 +138,12 @@ partial model PartialMultizone "Partial model for multizone models"
       tab="IdealHeaterCooler",
       group="Heater",
       enable=not recOrSep));
+  parameter Boolean useHeatDeliveryDynamics=false
+    "Enable simplified first-order emitter/heat-delivery dynamics"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Heater", enable=not recOrSep));
+  parameter Modelica.Units.SI.Time tauHeatDelivery=1
+    "Simplified heat-delivery time constant"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Heater", enable=not recOrSep and useHeatDeliveryDynamics));
   parameter Boolean Cooler_on=true "Activates the cooler"
     annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep));
   parameter Real h_cooler=0 "Upper limit controller output of the cooler"
@@ -147,6 +157,12 @@ partial model PartialMultizone "Partial model for multizone models"
       tab="IdealHeaterCooler",
       group="Cooler",
       enable=not recOrSep));
+  parameter Boolean useCoolDeliveryDynamics=false
+    "Enable simplified first-order cooling-delivery dynamics"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep));
+  parameter Modelica.Units.SI.Time tauCoolDelivery=1
+    "Simplified cooling-delivery time constant"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep and useCoolDeliveryDynamics));
 
   Modelica.Blocks.Interfaces.RealInput TSetHeat[numZones](
     each final quantity="ThermodynamicTemperature",
@@ -174,16 +190,28 @@ partial model PartialMultizone "Partial model for multizone models"
     origin={-74,-110})));
   Modelica.Blocks.Interfaces.RealOutput PHeater[numZones](each final quantity="HeatFlowRate",
       each final unit="W")
-    "Power for heating"
+    "Delivered power for heating"
     annotation (
     Placement(transformation(extent={{100,-56},{120,-36}}),
     iconTransformation(extent={{80,-80},{100,-60}})));
+  Modelica.Blocks.Interfaces.RealOutput PHeaterRequested[numZones](each final quantity="HeatFlowRate",
+      each final unit="W")
+    "PI-controller requested heating power before emitter dynamics";
+  Modelica.Blocks.Interfaces.RealOutput PHeaterDeliveryDeficit[numZones](each final quantity="HeatFlowRate",
+      each final unit="W")
+    "Positive requested-minus-delivered heating power due to emitter dynamics";
   Modelica.Blocks.Interfaces.RealOutput PCooler[numZones](each final quantity="HeatFlowRate",
       each final unit="W")
     "Power for cooling"
     annotation (
     Placement(transformation(extent={{100,-70},{120,-50}}),iconTransformation(
     extent={{80,-100},{100,-80}})));
+  Modelica.Blocks.Interfaces.RealOutput PCoolerRequested[numZones](each final quantity="HeatFlowRate",
+      each final unit="W")
+    "PI-controller requested cooling power before delivery dynamics";
+  Modelica.Blocks.Interfaces.RealOutput PCoolerDeliveryDeficit[numZones](each final quantity="HeatFlowRate",
+      each final unit="W")
+    "Positive cooling delivery deficit magnitude caused by delivery dynamics";
   Modelica.Blocks.Interfaces.RealOutput QIntGains_flow[numZones,3](each final
       quantity="HeatFlowRate", each final unit="W") if ASurTot > 0 or VAir > 0
     "Heat flow based on internal gains for each zone from persons, machines, and light"
@@ -193,7 +221,11 @@ equation
   // if ASurTot or VAir < 0 PHeater and PCooler are set to dummy value zero
   if not (ASurTot > 0 or VAir > 0) then
     PHeater[:] = fill(0, numZones);
+    PHeaterRequested[:] = fill(0, numZones);
+    PHeaterDeliveryDeficit[:] = fill(0, numZones);
     PCooler[:] = fill(0, numZones);
+    PCoolerRequested[:] = fill(0, numZones);
+    PCoolerDeliveryDeficit[:] = fill(0, numZones);
   else
     for i in 1:numZones loop
       connect(zone[i].QIntGains_flow, QIntGains_flow[i, :]);
@@ -204,28 +236,44 @@ equation
   if (ASurTot > 0 or VAir > 0) and not recOrSep then
     if Heater_on then
       connect(zone.PHeater, PHeater);
+      connect(zone.PHeaterRequested, PHeaterRequested);
+      connect(zone.PHeaterDeliveryDeficit, PHeaterDeliveryDeficit);
     else
       PHeater[:] = fill(0, numZones);
+      PHeaterRequested[:] = fill(0, numZones);
+      PHeaterDeliveryDeficit[:] = fill(0, numZones);
     end if;
     if Cooler_on then
       connect(zone.PCooler, PCooler);
+      connect(zone.PCoolerRequested, PCoolerRequested);
+      connect(zone.PCoolerDeliveryDeficit, PCoolerDeliveryDeficit);
     else
       PCooler[:] = fill(0, numZones);
+      PCoolerRequested[:] = fill(0, numZones);
+      PCoolerDeliveryDeficit[:] = fill(0, numZones);
     end if;
   // if ideal heating or cooling is set by record
   elseif (ASurTot > 0 or VAir > 0) and recOrSep then
     for i in 1:numZones loop
       if zoneParam[i].HeaterOn then
         connect(zone[i].PHeater, PHeater[i]);
+        connect(zone[i].PHeaterRequested, PHeaterRequested[i]);
+        connect(zone[i].PHeaterDeliveryDeficit, PHeaterDeliveryDeficit[i]);
         connect(TSetHeat[i], zone[i].TSetHeat);
       else
         PHeater[i] = 0;
+        PHeaterRequested[i] = 0;
+        PHeaterDeliveryDeficit[i] = 0;
       end if;
       if zoneParam[i].CoolerOn then
         connect(zone[i].PCooler, PCooler[i]);
+        connect(zone[i].PCoolerRequested, PCoolerRequested[i]);
+        connect(zone[i].PCoolerDeliveryDeficit, PCoolerDeliveryDeficit[i]);
         connect(TSetCool[i], zone[i].TSetCool);
       else
         PCooler[i] = 0;
+        PCoolerRequested[i] = 0;
+        PCoolerDeliveryDeficit[i] = 0;
       end if;
     end for;
   end if;

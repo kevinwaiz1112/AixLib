@@ -167,11 +167,39 @@ record ZoneBaseRecord "Base record definition for zone records"
     "Maximum specific air flow supplied by the AHU";
   parameter Real shadingFactor[nOrientations] "Fc-Value: Factor representing how much of the actual solar irradiation goes through the sunblind and enters the window element, for the case, that the sunblind is activated. Defaults to 1, i.e. no shading is active. External sunblinds.";
   parameter Real maxIrr[nOrientations](each unit = "W/m2") "Threshold value above which the sunblind (external) becomes active for the whole zone. Threshold regards to the incoming irradiation level with the window direction. This value does not account for heat flux due to the outside temperature.";
+  parameter Modelica.Units.SI.HeatFlowRate QHeatDesign=0
+    "ROM design heat load used as reference for simplified heat-delivery sizing";
+  parameter Real heatSizingFactor=1
+    "Building-wide heat-delivery sizing factor relative to QHeatDesign";
+  parameter Real heatZoneSizingFactor=1
+    "Zone-level multiplier around the building-wide sizing factor";
+  parameter Integer emitterClass=0
+    "Simplified emitter class: 0=legacy/ideal, 1=fast, 2=medium, 3=slow";
+  parameter Modelica.Units.SI.TemperatureDifference heatProportionalBand=1
+    "Temperature error that maps approximately to full requested heating power";
+  parameter Boolean useHeatDeliveryDynamics=false
+    "Enable first-order heat-delivery/emitter dynamics";
+  parameter Modelica.Units.SI.Time tauHeatDelivery=1
+    "First-order heat-delivery time constant";
   parameter Real hHeat "Upper limit controller output";
   parameter Real lHeat "Lower limit controller output";
   parameter Real KRHeat "Gain of the controller";
   parameter Modelica.Units.SI.Time TNHeat "Time constant of the controller";
   parameter Boolean HeaterOn "Use heater component";
+  parameter Modelica.Units.SI.HeatFlowRate QCoolNominal=0
+    "Nominal cooling-capacity proxy before zone-level variation";
+  parameter Real coolSpecificCapacity(unit="W/m2")=0
+    "Building-wide area-specific cooling-capacity proxy";
+  parameter Real coolZoneCapacityFactor=1
+    "Zone-level cooling-capacity multiplier";
+  parameter Integer coolingDeliveryClass=0
+    "Simplified cooling delivery class: 0=legacy/ideal, 1=fast, 2=medium, 3=slow";
+  parameter Modelica.Units.SI.TemperatureDifference coolProportionalBand=1
+    "Temperature error that maps approximately to full requested cooling power";
+  parameter Boolean useCoolDeliveryDynamics=false
+    "Enable first-order cooling-delivery dynamics";
+  parameter Modelica.Units.SI.Time tauCoolDelivery=1
+    "First-order cooling-delivery time constant";
   parameter Real hCool "Upper limit controller output";
   parameter Real lCool "Lower limit controller output";
   parameter Modelica.Units.SI.ThermalConductance heaLoadFacOut "Factor for heat load calculation (part 1) , needs to be multiplied with (indoor set temperature - nominal outside temperature)";
