@@ -167,6 +167,16 @@ record ZoneBaseRecord "Base record definition for zone records"
     "Maximum specific air flow supplied by the AHU";
   parameter Real shadingFactor[nOrientations] "Fc-Value: Factor representing how much of the actual solar irradiation goes through the sunblind and enters the window element, for the case, that the sunblind is activated. Defaults to 1, i.e. no shading is active. External sunblinds.";
   parameter Real maxIrr[nOrientations](each unit = "W/m2") "Threshold value above which the sunblind (external) becomes active for the whole zone. Threshold regards to the incoming irradiation level with the window direction. This value does not account for heat flux due to the outside temperature.";
+  parameter Boolean useGeometricShading=false
+    "Enable externally precomputed public-LoD2 geometric shading factors";
+  parameter String geometricShadingFileUri=""
+    "modelica:// URI of the per-zone geometric shading table";
+  parameter String geometricShadingTableName="GeometricShading"
+    "Table name in geometric shading file";
+  parameter Integer geometricShadingColumns[6]={2,3,4,5,6,7}
+    "Columns for wall fDir/fDif/fGrd and roof fDir/fDif/fGrd";
+  parameter Boolean geometricShadingPeriodic=false
+    "Repeat geometric shading table periodically";
   parameter Modelica.Units.SI.HeatFlowRate QHeatDesign=0
     "ROM design heat load used as reference for simplified heat-delivery sizing";
   parameter Real heatSizingFactor=1

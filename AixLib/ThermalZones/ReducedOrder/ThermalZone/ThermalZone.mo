@@ -32,6 +32,12 @@ model ThermalZone "Thermal zone containing moisture balance"
       tab="IdealHeaterCooler",
       group="Heater",
       enable=not recOrSep));
+  parameter Boolean useHeatDeliveryDynamics=false
+    "Enable simplified first-order emitter/heat-delivery dynamics"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Heater", enable=not recOrSep));
+  parameter Modelica.Units.SI.Time tauHeatDelivery=1
+    "Simplified heat-delivery time constant"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Heater", enable=not recOrSep and useHeatDeliveryDynamics));
   parameter Boolean Cooler_on=true "Activates the cooler"
     annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep));
   parameter Real h_cooler=0 "Upper limit controller output of the cooler"
@@ -45,6 +51,12 @@ model ThermalZone "Thermal zone containing moisture balance"
       tab="IdealHeaterCooler",
       group="Cooler",
       enable=not recOrSep));
+  parameter Boolean useCoolDeliveryDynamics=false
+    "Enable simplified first-order cooling-delivery dynamics"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep));
+  parameter Modelica.Units.SI.Time tauCoolDelivery=1
+    "Simplified cooling-delivery time constant"
+    annotation (Dialog(tab="IdealHeaterCooler", group="Cooler", enable=not recOrSep and useCoolDeliveryDynamics));
 
   // CO2 parameters
   parameter Modelica.Units.SI.MassFraction XCO2_amb=6.12157E-4
@@ -149,24 +161,67 @@ model ThermalZone "Thermal zone containing moisture balance"
     "Calculates direct solar radiation on titled surface for roof"
     annotation (Placement(transformation(extent={{-84,82},{-68,98}})));
 
+  Modelica.Blocks.Sources.CombiTimeTable geometricShadingTable(
+    tableOnFile=zoneParam.useGeometricShading,
+    table=[0,1,1,1,1,1,1; 31536000,1,1,1,1,1,1],
+    tableName=zoneParam.geometricShadingTableName,
+    fileName=if zoneParam.useGeometricShading then
+      Modelica.Utilities.Files.loadResource(zoneParam.geometricShadingFileUri)
+      else "NoName",
+    columns=zoneParam.geometricShadingColumns,
+    smoothness=Modelica.Blocks.Types.Smoothness.LinearSegments,
+    extrapolation=if zoneParam.geometricShadingPeriodic then
+      Modelica.Blocks.Types.Extrapolation.Periodic else
+      Modelica.Blocks.Types.Extrapolation.HoldLastPoint)
+    "Precomputed public-LoD2 geometric shading: wall/roof fDir,fDif,fGrd"
+    annotation (Placement(transformation(extent={{-64,2},{-54,10}})));
+
+  Real geometricShadingWall[3](each min=0, each max=1)
+    "Wall geometric shading factors: direct, sky diffuse, ground reflected";
+  Real geometricShadingRoof[3](each min=0, each max=1)
+    "Roof geometric shading factors: direct, sky diffuse, ground reflected";
+
+  Modelica.Blocks.Math.Product geoDirWall[zoneParam.nOrientations]
+    "Apply geometric direct-beam wall shading";
+  Modelica.Blocks.Math.Product geoSkyWall[zoneParam.nOrientations]
+    "Apply geometric sky-diffuse wall shading";
+  Modelica.Blocks.Math.Product geoGrdWall[zoneParam.nOrientations]
+    "Apply geometric ground-reflected wall shading";
+  Modelica.Blocks.Math.Add geoDifWall[zoneParam.nOrientations]
+    "Recombine geometrically shaded sky and ground wall diffuse radiation";
+  Modelica.Blocks.Math.Product geoDirRoof[zoneParam.nOrientationsRoof]
+    "Apply geometric direct-beam roof shading";
+  Modelica.Blocks.Math.Product geoSkyRoof[zoneParam.nOrientationsRoof]
+    "Apply geometric sky-diffuse roof shading";
+  Modelica.Blocks.Math.Product geoGrdRoof[zoneParam.nOrientationsRoof]
+    "Apply geometric ground-reflected roof shading";
+  Modelica.Blocks.Math.Add geoDifRoof[zoneParam.nOrientationsRoof]
+    "Recombine geometrically shaded sky and ground roof diffuse radiation";
+
   Utilities.Sources.HeaterCooler.HeaterCoolerPI heaterCooler(
     each h_heater=h_heater,
     each l_heater=l_heater,
     each KR_heater=KR_heater,
     each TN_heater=TN_heater,
+    each useHeatDeliveryDynamics=useHeatDeliveryDynamics,
+    each tauHeatDelivery=tauHeatDelivery,
     each h_cooler=h_cooler,
     each l_cooler=l_cooler,
     each KR_cooler=KR_cooler,
     each TN_cooler=TN_cooler,
+    each useCoolDeliveryDynamics=useCoolDeliveryDynamics,
+    each tauCoolDelivery=tauCoolDelivery,
     final zoneParam=zoneParam,
     each recOrSep=recOrSep,
     each Heater_on=Heater_on,
     each Cooler_on=Cooler_on,
-    each staOrDyn=not zoneParam.withIdealThresholds) if (ATot > 0 or zoneParam.VAir > 0)
+    each staOrDyn=not zoneParam.withIdealThresholds) if (ATot > 0 or zoneParam.VAir
+     > 0) and (recOrSep and (zoneParam.HeaterOn or zoneParam.CoolerOn)) or (
+    not recOrSep and (Heater_on or Cooler_on))
                                       "Heater Cooler with PI control"
     annotation (Placement(transformation(extent={{62,26},{84,46}})));
   Utilities.Sources.HeaterCooler.HeaterCoolerController heaterCoolerController(zoneParam=
-       zoneParam) if (ATot > 0 or zoneParam.VAir > 0) and zoneParam.withIdealThresholds
+       zoneParam) if zoneParam.withIdealThresholds
     annotation (Placement(transformation(extent={{-9,-8},{9,8}},
         rotation=0,
         origin={69,18})));
@@ -174,7 +229,8 @@ model ThermalZone "Thermal zone containing moisture balance"
     final quantity="ThermodynamicTemperature",
     final unit="K",
     displayUnit="degC",
-    min=0) "Set point for cooler" annotation (Placement(transformation(
+    min=0) if ((recOrSep and zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
+           "Set point for cooler" annotation (Placement(transformation(
         extent={{-20,-20},{20,20}},
         rotation=0,
         origin={-108,8}), iconTransformation(
@@ -185,7 +241,8 @@ model ThermalZone "Thermal zone containing moisture balance"
     final quantity="ThermodynamicTemperature",
     final unit="K",
     displayUnit="degC",
-    min=0) "Set point for heater" annotation (Placement(transformation(
+    min=0) if ((recOrSep and zoneParam.HeaterOn) or (not recOrSep and Heater_on))
+           "Set point for heater" annotation (Placement(transformation(
         extent={{20,20},{-20,-20}},
         rotation=180,
         origin={-108,-16}),iconTransformation(
@@ -193,14 +250,32 @@ model ThermalZone "Thermal zone containing moisture balance"
         rotation=180,
         origin={-96,12})));
   Modelica.Blocks.Interfaces.RealOutput PHeater(final quantity="HeatFlowRate",
-      final unit="W")
-    "Power for heating" annotation (Placement(transformation(extent={{100,-10},
+      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
+    zoneParam.HeaterOn) or (not recOrSep and Heater_on))
+    "Delivered power for heating" annotation (Placement(transformation(extent={{100,-10},
             {120,10}}), iconTransformation(extent={{100,-30},{120,-10}})));
+  Modelica.Blocks.Interfaces.RealOutput PHeaterRequested(final quantity="HeatFlowRate",
+      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
+    zoneParam.HeaterOn) or (not recOrSep and Heater_on))
+    "PI-controller requested heating power before emitter dynamics";
+  Modelica.Blocks.Interfaces.RealOutput PHeaterDeliveryDeficit(final quantity="HeatFlowRate",
+      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
+    zoneParam.HeaterOn) or (not recOrSep and Heater_on))
+    "Positive requested-minus-delivered heating power due to emitter dynamics";
   Modelica.Blocks.Interfaces.RealOutput PCooler(final quantity="HeatFlowRate",
-      final unit="W")
+      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
+    zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
     "Power for cooling" annotation (Placement(transformation(extent={{100,-30},
             {120,-10}}), iconTransformation(extent={{100,-50},{120,-30}})));
-    Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a nzHeatFlow[zoneParam.nNZs]
+  Modelica.Blocks.Interfaces.RealOutput PCoolerRequested(final quantity="HeatFlowRate",
+      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
+    zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
+    "PI-controller requested cooling power before delivery dynamics";
+  Modelica.Blocks.Interfaces.RealOutput PCoolerDeliveryDeficit(final quantity="HeatFlowRate",
+      final unit="W") if (ATot > 0 or zoneParam.VAir > 0) and ((recOrSep and
+    zoneParam.CoolerOn) or (not recOrSep and Cooler_on))
+    "Positive requested-minus-delivered cooling-power magnitude due to delivery dynamics";
+    Modelica.Thermal.HeatTransfer.Interfaces.HeatPort_a nzHeatFlow[zoneParam.nNZs] if sum(zoneParam.ANZ) > 0
     "surface heat port for nz borders - inner surface if zone index is higher than index of other zone, outer if lower"
     annotation (Placement(transformation(extent={{94,86},{114,106}}),
                             iconTransformation(extent={{90,70},{110,90}})));
@@ -310,8 +385,8 @@ model ThermalZone "Thermal zone containing moisture balance"
     annotation (Placement(transformation(extent={{-8,-74},{10,-60}})));
 
   BoundaryConditions.SolarIrradiation.DiffusePerez HDifTilRoof[zoneParam.nOrientationsRoof](
-    each final outSkyCon=false,
-    each final outGroCon=false,
+    each final outSkyCon=true,
+    each final outGroCon=true,
     final azi=zoneParam.aziRoof,
     final til=zoneParam.tiltRoof)
     "Calculates diffuse solar radiation on titled surface for roof"
@@ -435,6 +510,10 @@ protected
     annotation (Placement(transformation(extent={{4,-4},{-4,4}},
     rotation=180,origin={39,22})));
 equation
+  for j in 1:3 loop
+    geometricShadingWall[j] = min(1, max(0, geometricShadingTable.y[j]));
+    geometricShadingRoof[j] = min(1, max(0, geometricShadingTable.y[j + 3]));
+  end for;
   connect(lights.convHeat, ROM.intGainsConv) annotation (Line(points={{75,-62.8},
           {92,-62.8},{92,78},{86,78}}, color={191,0,0}));
   connect(machinesSenHea.convHeat, ROM.intGainsConv) annotation (Line(points={{75,
@@ -465,17 +544,20 @@ equation
           18.28},{-24,18.28},{-24,30},{2,30},{2,34.5},{3.2,34.5}}, color={0,0,127}));
   connect(eqAirTempWall.TEqAir, preTemWall.T) annotation (Line(points={{-25.4,16},
           {-20,16},{-20,20},{-18.8,20}}, color={0,0,127}));
-  connect(HDirTilWall.H, corGMod.HDirTil) annotation (Line(points={{-67.2,39.5},
-          {-58,39.5},{-58,52},{-38,52},{-38,52.6},{-17.2,52.6}}, color={0,0,127}));
-  connect(HDirTilWall.H, solRadWall.u1) annotation (Line(points={{-67.2,39.5},{-58,
-          39.5},{-58,30},{-55,30}}, color={0,0,127}));
+  connect(HDirTilWall.H, geoDirWall.u1);
+  geoDirWall.u2 = fill(geometricShadingWall[1], zoneParam.nOrientations);
+  connect(geoDirWall.y, corGMod.HDirTil);
+  connect(geoDirWall.y, solRadWall.u1);
   connect(HDirTilWall.inc, corGMod.inc) annotation (Line(points={{-67.2,36.1},{-64,
           36.1},{-64,36},{-60,36},{-60,45.4},{-17.2,45.4}}, color={0,0,127}));
-  connect(HDifTilWall.H, solRadWall.u2) annotation (Line(points={{-67.2,18},{-60,
-          18},{-60,24},{-55,24}}, color={0,0,127}));
-  connect(HDifTilWall.HGroDifTil, corGMod.HGroDifTil) annotation (Line(points={{
-          -67.2,13.2},{-62,13.2},{-62,48},{-40,48},{-40,47.8},{-17.2,47.8}},
-        color={0,0,127}));
+  connect(HDifTilWall.HSkyDifTil, geoSkyWall.u1);
+  geoSkyWall.u2 = fill(geometricShadingWall[2], zoneParam.nOrientations);
+  connect(HDifTilWall.HGroDifTil, geoGrdWall.u1);
+  geoGrdWall.u2 = fill(geometricShadingWall[3], zoneParam.nOrientations);
+  connect(geoSkyWall.y, geoDifWall.u1);
+  connect(geoGrdWall.y, geoDifWall.u2);
+  connect(geoDifWall.y, solRadWall.u2);
+  connect(geoGrdWall.y, corGMod.HGroDifTil);
   connect(solRadWall.y, eqAirTempWall.HSol) annotation (Line(points={{-43.5,27},
           {-42,27},{-42,19.6},{-39.2,19.6}}, color={0,0,127}));
   connect(weaBus.TBlaSky, eqAirTempWall.TBlaSky) annotation (Line(
@@ -492,9 +574,7 @@ equation
       string="%first",
       index=-1,
       extent={{-6,3},{-6,3}}));
-  connect(HDifTilWall.HSkyDifTil, corGMod.HSkyDifTil) annotation (Line(points={{
-          -67.2,22.8},{-64,22.8},{-64,50},{-40,50},{-40,50.2},{-17.2,50.2}},
-        color={0,0,127}));
+  connect(geoSkyWall.y, corGMod.HSkyDifTil);
   connect(theConWin.solid, ROM.window) annotation (Line(points={{26,35},{28,35},
           {28,78},{38,78}}, color={191,0,0}));
   connect(theConWall.solid, ROM.extWall) annotation (Line(points={{26,19},{29,19},
@@ -513,10 +593,16 @@ equation
       string="%first",
       index=-1,
       extent={{-6,3},{-6,3}}));
-  connect(HDirTilRoof.H, solRadRoof.u1)
-    annotation (Line(points={{-67.2,90},{-59,90}}, color={0,0,127}));
-  connect(HDifTilRoof.H, solRadRoof.u2) annotation (Line(points={{-67.2,69},{-64,
-          69},{-64,84},{-59,84}}, color={0,0,127}));
+  connect(HDirTilRoof.H, geoDirRoof.u1);
+  geoDirRoof.u2 = fill(geometricShadingRoof[1], zoneParam.nOrientationsRoof);
+  connect(geoDirRoof.y, solRadRoof.u1);
+  connect(HDifTilRoof.HSkyDifTil, geoSkyRoof.u1);
+  geoSkyRoof.u2 = fill(geometricShadingRoof[2], zoneParam.nOrientationsRoof);
+  connect(HDifTilRoof.HGroDifTil, geoGrdRoof.u1);
+  geoGrdRoof.u2 = fill(geometricShadingRoof[3], zoneParam.nOrientationsRoof);
+  connect(geoSkyRoof.y, geoDifRoof.u1);
+  connect(geoGrdRoof.y, geoDifRoof.u2);
+  connect(geoDifRoof.y, solRadRoof.u2);
   connect(solRadRoof.y, eqAirTempRoof.HSol) annotation (Line(points={{-47.5,87},
           {-44,87},{-44,75.6},{-41.2,75.6}}, color={0,0,127}));
   connect(constSunblindRoof.y, eqAirTempRoof.sunblind) annotation (Line(points={
@@ -574,33 +660,35 @@ equation
     annotation (Line(points={{2.4,16},{21,16},{21,14}}, color={0,0,127}));
   connect(hConWin.y, theConWin.Gc)
     annotation (Line(points={{22,43.6},{22,40},{21,40}}, color={0,0,127}));
-  if ATot > 0 or zoneParam.VAir > 0 then
-    if zoneParam.withIdealThresholds then
-      connect(heaterCoolerController.heaterActive, heaterCooler.heaterActive)
-        annotation (Line(points={{76.38,19.6},{80,19.6},{80,28},{80.48,28},{80.48,28.8}},
-            color={255,0,255}));
-      connect(heaterCoolerController.coolerActive, heaterCooler.coolerActive)
-        annotation (Line(points={{76.38,16.4},{76.38,16},{66,16},{66,26},{65.3,26},{
-              65.3,28.8}}, color={255,0,255}));
-      connect(weaBus, heaterCoolerController.weaBus) annotation (Line(
-          points={{-100,34},{-86,34},{-86,10},{58,10},{58,21.44},{62.07,21.44}},
-          color={255,204,51},
-          thickness=0.5));
-    end if;
-    connect(TSetHeat, heaterCooler.setPointHeat) annotation (Line(points={{-108,-16},
-          {-86,-16},{-86,6},{74,6},{74,18},{75.42,18},{75.42,28.8}}, color={0,0,127}));
-    connect(TSetCool, heaterCooler.setPointCool) annotation (Line(points={{-108,8},
+  connect(heaterCoolerController.heaterActive, heaterCooler.heaterActive)
+    annotation (Line(points={{76.38,19.6},{80,19.6},{80,28},{80.48,28},{80.48,28.8}},
+        color={255,0,255}));
+  connect(heaterCoolerController.coolerActive, heaterCooler.coolerActive)
+    annotation (Line(points={{76.38,16.4},{76.38,16},{66,16},{66,26},{65.3,26},{
+          65.3,28.8}}, color={255,0,255}));
+  connect(TSetHeat, heaterCooler.setPointHeat) annotation (Line(points={{-108,-16},
+          {-86,-16},{-86,6},{74,6},{74,18},{75.42,18},{75.42,28.8}}, color={0,0,
+          127}));
+  connect(TSetCool, heaterCooler.setPointCool) annotation (Line(points={{-108,8},
           {70,8},{70,16},{70.36,16},{70.36,28.8}}, color={0,0,127}));
-    connect(heaterCooler.coolingPower, PCooler) annotation (Line(points={{84,35.4},
+  connect(heaterCooler.coolingPower, PCooler) annotation (Line(points={{84,35.4},
           {84,-2},{98,-2},{98,-20},{110,-20}}, color={0,0,127}));
-    connect(heaterCooler.heatingPower, PHeater) annotation (Line(points={{84,40},{
+  connect(heaterCooler.coolingPowerRequested, PCoolerRequested);
+  connect(heaterCooler.coolingPowerDeliveryDeficit, PCoolerDeliveryDeficit);
+  connect(heaterCooler.heatingPower, PHeater) annotation (Line(points={{84,40},{
           90,40},{90,0},{110,0}}, color={0,0,127}));
-    connect(heaterCooler.heatCoolRoom, intGainsConv) annotation (Line(points={{82.9,
+  connect(heaterCooler.heatingPowerRequested, PHeaterRequested);
+  connect(heaterCooler.heatingPowerDeliveryDeficit, PHeaterDeliveryDeficit);
+  connect(weaBus, heaterCoolerController.weaBus) annotation (Line(
+      points={{-100,34},{-86,34},{-86,10},{58,10},{58,21.44},{62.07,21.44}},
+      color={255,204,51},
+      thickness=0.5), Text(
+      string="%first",
+      index=-1,
+      extent={{-6,3},{-6,3}},
+      horizontalAlignment=TextAlignment.Right));
+  connect(heaterCooler.heatCoolRoom, intGainsConv) annotation (Line(points={{82.9,
           32},{96,32},{96,20},{104,20}}, color={191,0,0}));
-  else
-    PHeater = 0;
-    PCooler = 0;
-  end if;
   connect(corGMod.solarRadWinTrans, simpleExternalShading.solRadWin)
     annotation (Line(points={{-3.4,49},{2.3,49},{2.3,48.92},{3.88,48.92}},
         color={0,0,127}));
@@ -667,8 +755,10 @@ equation
             -62},{-40,-62},{-40,-63.4}}, color={0,0,127}));
   end if;
 
-  connect(ROM.nz, nzHeatFlow) annotation (Line(points={{80.5,92},{80,92},{80,96},
-          {104,96}}, color={191,0,0}));
+  if sum(zoneParam.ANZ) > 0 then
+    connect(ROM.nz, nzHeatFlow) annotation (Line(points={{80.5,92},{80,92},{80,96},
+            {104,96}}, color={191,0,0}));
+  end if;
 
 if use_NaturalAirExchange and not use_MechanicalAirExchange then
     connect(weaBus.TDryBul, preTemVen.T) annotation (Line(
