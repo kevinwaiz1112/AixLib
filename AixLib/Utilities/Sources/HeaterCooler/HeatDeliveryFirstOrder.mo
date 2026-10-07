@@ -7,6 +7,9 @@ block HeatDeliveryFirstOrder
   parameter Modelica.Units.SI.Time tau(min=Modelica.Constants.small)=1
     "Heat-delivery time constant when useDynamics=true";
 
+  parameter Modelica.Units.SI.HeatFlowRate y_start=0
+    "Initial delivered power when dynamics is enabled";
+
   Modelica.Blocks.Interfaces.RealInput u(
     final quantity="HeatFlowRate",
     final unit="W")
@@ -15,8 +18,13 @@ block HeatDeliveryFirstOrder
   Modelica.Blocks.Interfaces.RealOutput y(
     final quantity="HeatFlowRate",
     final unit="W",
-    start=0)
+    start=y_start)
     "Delivered heating or cooling power";
+
+initial equation
+  if useDynamics then
+    y = y_start;
+  end if;
 
 equation
   if useDynamics then

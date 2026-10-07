@@ -161,14 +161,20 @@ model ThermalZone "Thermal zone containing moisture balance"
     "Calculates direct solar radiation on titled surface for roof"
     annotation (Placement(transformation(extent={{-84,82},{-68,98}})));
 
+  final parameter Integer nGeometricShadingOutputs=if zoneParam.geometricShadingByOrientation
+    then 3*(zoneParam.nOrientations + zoneParam.nOrientationsRoof) else 6;
   Modelica.Blocks.Sources.CombiTimeTable geometricShadingTable(
     tableOnFile=zoneParam.useGeometricShading,
-    table=[0,1,1,1,1,1,1; 31536000,1,1,1,1,1,1],
+    table=cat(2, [0;31536000], ones(2, nGeometricShadingOutputs)),
     tableName=zoneParam.geometricShadingTableName,
     fileName=if zoneParam.useGeometricShading then
       Modelica.Utilities.Files.loadResource(zoneParam.geometricShadingFileUri)
       else "NoName",
-    columns=zoneParam.geometricShadingColumns,
+    columns=if zoneParam.geometricShadingByOrientation then
+      cat(1,
+        {zoneParam.geometricShadingWallColumns[div(k-1,3)+1,mod(k-1,3)+1] for k in 1:3*zoneParam.nOrientations},
+        {zoneParam.geometricShadingRoofColumns[div(k-1,3)+1,mod(k-1,3)+1] for k in 1:3*zoneParam.nOrientationsRoof})
+      else zoneParam.geometricShadingColumns,
     smoothness=Modelica.Blocks.Types.Smoothness.LinearSegments,
     extrapolation=if zoneParam.geometricShadingPeriodic then
       Modelica.Blocks.Types.Extrapolation.Periodic else
@@ -176,9 +182,9 @@ model ThermalZone "Thermal zone containing moisture balance"
     "Precomputed public-LoD2 geometric shading: wall/roof fDir,fDif,fGrd"
     annotation (Placement(transformation(extent={{-64,2},{-54,10}})));
 
-  Real geometricShadingWall[3](each min=0, each max=1)
+  Real geometricShadingWall[zoneParam.nOrientations,3](each min=0, each max=1)
     "Wall geometric shading factors: direct, sky diffuse, ground reflected";
-  Real geometricShadingRoof[3](each min=0, each max=1)
+  Real geometricShadingRoof[zoneParam.nOrientationsRoof,3](each min=0, each max=1)
     "Roof geometric shading factors: direct, sky diffuse, ground reflected";
 
   Modelica.Blocks.Math.Product geoDirWall[zoneParam.nOrientations]
@@ -510,9 +516,17 @@ protected
     annotation (Placement(transformation(extent={{4,-4},{-4,4}},
     rotation=180,origin={39,22})));
 equation
-  for j in 1:3 loop
-    geometricShadingWall[j] = min(1, max(0, geometricShadingTable.y[j]));
-    geometricShadingRoof[j] = min(1, max(0, geometricShadingTable.y[j + 3]));
+  for i in 1:zoneParam.nOrientations loop
+    for j in 1:3 loop
+      geometricShadingWall[i,j] = min(1, max(0, geometricShadingTable.y[
+        if zoneParam.geometricShadingByOrientation then 3*(i-1)+j else j]));
+    end for;
+  end for;
+  for i in 1:zoneParam.nOrientationsRoof loop
+    for j in 1:3 loop
+      geometricShadingRoof[i,j] = min(1, max(0, geometricShadingTable.y[
+        if zoneParam.geometricShadingByOrientation then 3*zoneParam.nOrientations+3*(i-1)+j else j+3]));
+    end for;
   end for;
   connect(lights.convHeat, ROM.intGainsConv) annotation (Line(points={{75,-62.8},
           {92,-62.8},{92,78},{86,78}}, color={191,0,0}));
@@ -545,15 +559,15 @@ equation
   connect(eqAirTempWall.TEqAir, preTemWall.T) annotation (Line(points={{-25.4,16},
           {-20,16},{-20,20},{-18.8,20}}, color={0,0,127}));
   connect(HDirTilWall.H, geoDirWall.u1);
-  geoDirWall.u2 = fill(geometricShadingWall[1], zoneParam.nOrientations);
+  geoDirWall.u2 = geometricShadingWall[:,1];
   connect(geoDirWall.y, corGMod.HDirTil);
   connect(geoDirWall.y, solRadWall.u1);
   connect(HDirTilWall.inc, corGMod.inc) annotation (Line(points={{-67.2,36.1},{-64,
           36.1},{-64,36},{-60,36},{-60,45.4},{-17.2,45.4}}, color={0,0,127}));
   connect(HDifTilWall.HSkyDifTil, geoSkyWall.u1);
-  geoSkyWall.u2 = fill(geometricShadingWall[2], zoneParam.nOrientations);
+  geoSkyWall.u2 = geometricShadingWall[:,2];
   connect(HDifTilWall.HGroDifTil, geoGrdWall.u1);
-  geoGrdWall.u2 = fill(geometricShadingWall[3], zoneParam.nOrientations);
+  geoGrdWall.u2 = geometricShadingWall[:,3];
   connect(geoSkyWall.y, geoDifWall.u1);
   connect(geoGrdWall.y, geoDifWall.u2);
   connect(geoDifWall.y, solRadWall.u2);
@@ -594,12 +608,12 @@ equation
       index=-1,
       extent={{-6,3},{-6,3}}));
   connect(HDirTilRoof.H, geoDirRoof.u1);
-  geoDirRoof.u2 = fill(geometricShadingRoof[1], zoneParam.nOrientationsRoof);
+  geoDirRoof.u2 = geometricShadingRoof[:,1];
   connect(geoDirRoof.y, solRadRoof.u1);
   connect(HDifTilRoof.HSkyDifTil, geoSkyRoof.u1);
-  geoSkyRoof.u2 = fill(geometricShadingRoof[2], zoneParam.nOrientationsRoof);
+  geoSkyRoof.u2 = geometricShadingRoof[:,2];
   connect(HDifTilRoof.HGroDifTil, geoGrdRoof.u1);
-  geoGrdRoof.u2 = fill(geometricShadingRoof[3], zoneParam.nOrientationsRoof);
+  geoGrdRoof.u2 = geometricShadingRoof[:,3];
   connect(geoSkyRoof.y, geoDifRoof.u1);
   connect(geoGrdRoof.y, geoDifRoof.u2);
   connect(geoDifRoof.y, solRadRoof.u2);
